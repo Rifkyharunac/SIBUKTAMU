@@ -1,0 +1,464 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "../vendor/shadcn-tailwind-4.13.0.css";
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility scrollbar-gutter-stable {
+  scrollbar-gutter: stable;
+}
+
+:root {
+  --background: #f4f8f7;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --primary: #087f5b;
+  --primary-foreground: #fafafa;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+  --destructive: #e7000b;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #10b981;
+  --chart-1: #f54900;
+  --chart-2: #009689;
+  --chart-3: #104e64;
+  --chart-4: #ffb900;
+  --chart-5: #fe9a00;
+  --radius: 0.75rem;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #171717;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #a1a1a1;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  min-width: 320px;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.admin-editor input,
+.admin-editor select,
+.admin-editor textarea {
+  border-color: #d7e1dd;
+  background-color: #fff;
+}
+
+.admin-editor input,
+.admin-editor select {
+  min-height: 44px;
+}
+
+.admin-editor input:focus-visible,
+.admin-editor select:focus-visible,
+.admin-editor textarea:focus-visible {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgb(16 185 129 / 10%);
+}
+
+.admin-panel table th,
+.admin-panel table td {
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+
+@media print {
+  .print-area {
+    box-shadow: none !important;
+  }
+}
+
+.hero-3d-shell {
+  isolation: isolate;
+  background: #043d31;
+}
+
+.hero-building-photo {
+  z-index: 0;
+  overflow: hidden;
+}
+
+.hero-building-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 48%;
+  filter: saturate(0.88) contrast(1.03);
+  transform: scale(1.025);
+}
+
+.hero-building-overlay {
+  z-index: 1;
+  background:
+    radial-gradient(circle at 78% 32%, rgb(16 185 129 / 18%), transparent 30%),
+    linear-gradient(90deg, rgb(2 44 35 / 96%) 0%, rgb(3 63 49 / 88%) 42%, rgb(3 48 40 / 60%) 100%),
+    linear-gradient(180deg, rgb(2 44 35 / 14%), rgb(2 44 35 / 50%));
+}
+
+.hero-3d-grid {
+  z-index: 2;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 7%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 7%) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to right, transparent 5%, black 48%, black 100%);
+}
+
+.hero-3d-scene {
+  z-index: 4;
+  perspective: 1500px;
+  transform-style: preserve-3d;
+}
+
+.hero-3d-orbit {
+  position: absolute;
+  inset: 5% 4% 6% 2%;
+  border: 1px solid rgb(5 150 105 / 18%);
+  border-radius: 50%;
+  transform: rotate(-12deg);
+  box-shadow: 0 0 90px rgb(16 185 129 / 12%);
+}
+
+.hero-3d-orbit::before,
+.hero-3d-orbit::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  background: #10b981;
+  box-shadow: 0 0 24px rgb(16 185 129 / 55%);
+}
+
+.hero-3d-orbit::before {
+  top: 18%;
+  left: 3%;
+  width: 10px;
+  height: 10px;
+}
+
+.hero-3d-orbit::after {
+  right: 8%;
+  bottom: 13%;
+  width: 7px;
+  height: 7px;
+}
+
+.hero-3d-stage {
+  position: absolute;
+  top: 5%;
+  left: 8%;
+  width: min(520px, 86%);
+  transform: rotateX(5deg) rotateY(-9deg) rotateZ(1deg);
+  transform-style: preserve-3d;
+  animation: hero-stage 8s ease-in-out infinite;
+}
+
+.hero-3d-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 92% 4%, rgb(52 211 153 / 30%), transparent 28%),
+    linear-gradient(145deg, #075f47 0%, #043d31 76%);
+  box-shadow:
+    0 54px 100px rgb(0 0 0 / 42%),
+    26px 24px 0 rgb(16 185 129 / 12%),
+    -1px -1px 0 rgb(255 255 255 / 20%);
+  transform: translateZ(34px);
+}
+
+.hero-3d-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgb(255 255 255 / 10%), transparent 35%);
+}
+
+.hero-3d-float {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 210px;
+  border: 1px solid rgb(255 255 255 / 75%);
+  border-radius: 18px;
+  background: rgb(255 255 255 / 92%);
+  padding: 12px;
+  box-shadow: 0 24px 58px rgb(0 0 0 / 30%);
+  backdrop-filter: blur(14px);
+  transform-style: preserve-3d;
+}
+
+.public-site-shell {
+  background-image:
+    linear-gradient(rgb(244 248 247 / 94%), rgb(244 248 247 / 97%)),
+    url("/gedung-disnakertrans-sulteng.webp");
+  background-position: center top;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.guest-form-page {
+  position: relative;
+  isolation: isolate;
+}
+
+.guest-form-intro {
+  text-shadow: 0 1px 0 rgb(255 255 255 / 80%);
+}
+
+.guest-progress {
+  filter: drop-shadow(0 10px 24px rgb(4 61 49 / 9%));
+}
+
+.guest-form-card {
+  transform: perspective(1200px) rotateX(0.45deg) translateZ(0);
+  transform-origin: center top;
+}
+
+.guest-form-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  box-shadow: 18px 20px 0 rgb(8 127 91 / 7%);
+}
+
+.service-choice {
+  transform-style: preserve-3d;
+}
+
+.visit-success-card {
+  transform: perspective(1200px) rotateX(0.5deg);
+  transform-origin: center top;
+}
+
+.visit-code-panel {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 85%),
+    0 14px 34px rgb(8 127 91 / 10%);
+}
+
+.success-orb {
+  position: absolute;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  background: rgb(255 255 255 / 7%);
+}
+
+.success-orb-one {
+  top: -72px;
+  right: -36px;
+  width: 190px;
+  height: 190px;
+}
+
+.success-orb-two {
+  bottom: -80px;
+  left: -44px;
+  width: 160px;
+  height: 160px;
+}
+
+.hero-3d-float-notification {
+  top: 25%;
+  right: -18%;
+  transform: translateZ(80px) rotateY(7deg);
+  animation: hero-float 5.4s ease-in-out infinite;
+}
+
+.hero-3d-float-report {
+  left: -13%;
+  bottom: 12%;
+  transform: translateZ(90px) rotateY(6deg);
+  animation: hero-float 6.2s ease-in-out 0.6s infinite;
+}
+
+.hero-3d-float-queue {
+  top: -4%;
+  left: -8%;
+  min-width: 150px;
+  display: block;
+  border-color: rgb(52 211 153 / 38%);
+  background: linear-gradient(145deg, rgb(6 95 70 / 96%), rgb(4 61 49 / 96%));
+  transform: translateZ(110px) rotate(-3deg);
+  animation: hero-float 5.8s ease-in-out 0.2s infinite;
+}
+
+@keyframes hero-stage {
+  0%, 100% { transform: rotateX(5deg) rotateY(-9deg) rotateZ(1deg) translateY(0); }
+  50% { transform: rotateX(3deg) rotateY(-6deg) rotateZ(0.3deg) translateY(-8px); }
+}
+
+@keyframes hero-float {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -10px; }
+}
+
+@media (max-width: 720px) {
+  .hero-building-overlay {
+    background:
+      linear-gradient(180deg, rgb(2 44 35 / 94%) 0%, rgb(3 63 49 / 88%) 44%, rgb(3 48 40 / 70%) 100%);
+  }
+
+  .hero-photo-credit {
+    right: 50%;
+    transform: translateX(50%);
+    white-space: nowrap;
+  }
+
+  .hero-3d-stage {
+    top: 10%;
+    left: 7%;
+    width: 86%;
+    transform: rotateX(4deg) rotateY(-5deg) scale(0.92);
+    transform-origin: center top;
+  }
+
+  .hero-3d-float {
+    min-width: 178px;
+    padding: 10px;
+  }
+
+  .hero-3d-float-notification {
+    right: -8%;
+  }
+
+  .hero-3d-float-report {
+    left: -7%;
+    bottom: 8%;
+  }
+
+  .hero-3d-float-queue {
+    top: -5%;
+    left: -5%;
+    min-width: 132px;
+  }
+
+  .guest-form-card,
+  .visit-success-card {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-3d-stage,
+  .hero-3d-float {
+    animation: none;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+
+  .print-area {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .print-area button {
+    display: none !important;
+  }
+}
+
+/* Consistent depth and keyboard focus across the administration workspace. */
+.admin-panel { border-radius: 1.25rem; box-shadow: 0 2px 0 #dce7e2, 0 14px 40px rgb(6 61 47 / 5%); }
+.admin-panel h2 { line-height: 1.4; }
+.admin-panel table thead { background: #f1f6f3; }
+.admin-panel table tbody tr:hover { background: #f6faf8; }
+button:focus-visible, a:focus-visible { outline: 3px solid #d6a641; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }
