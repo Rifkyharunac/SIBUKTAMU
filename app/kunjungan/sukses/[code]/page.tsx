@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { PublicShell } from "@/components/public-shell";
 import { Button } from "@/components/ui/button";
+import { apiRequest } from "@/lib/api-client";
 import { clearActiveVisit, saveActiveVisit } from "@/lib/active-visit";
 
 type CheckoutResult = {
@@ -73,19 +74,11 @@ export default function VisitSuccessPage() {
     setCheckingOut(true);
     setCheckoutError("");
     try {
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const data = await apiRequest<CheckoutResult>("/api/checkout", {
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ visitCode: code, token, phone }),
       });
-      const raw = await response.text();
-      let data: (CheckoutResult & { error?: string }) = {};
-      try {
-        data = raw ? JSON.parse(raw) : {};
-      } catch {
-        data = {};
-      }
-      if (!response.ok) throw new Error(data.error || "Kunjungan belum berhasil diselesaikan.");
+      if (typeof data.durationMinutes !== "number") throw new Error("Kunjungan belum dikonfirmasi selesai. Silakan coba kembali.");
       clearActiveVisit(code);
       setCompleted(data);
     } catch (caught) {

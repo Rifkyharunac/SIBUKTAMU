@@ -27,7 +27,11 @@ function randomToken() {
 export function readSessionToken(request: Request) {
   const cookieHeader = request.headers.get("cookie") ?? "";
   const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${ADMIN_SESSION_COOKIE}=([^;]+)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
+  if (!match?.[1]) return null;
+  try {
+    const token = decodeURIComponent(match[1]);
+    return /^[a-f0-9]{64}$/.test(token) ? token : null;
+  } catch { return null; }
 }
 
 export function sessionCookie(token: string) {

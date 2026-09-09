@@ -69,6 +69,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { apiRequest } from "@/lib/api-client";
+import { LogoutButton } from "@/components/logout-button";
 import type { AdminIdentity } from "@/lib/admin-auth";
 
 type Visit = {
@@ -117,6 +119,7 @@ const navItems = [
   { key: "notifikasi", label: "Notifikasi", icon: Bell, roles: ["SUPER_ADMIN", "ADMIN_BIDANG"] },
   { key: "audit-log", label: "Audit Log", icon: History, roles: ["SUPER_ADMIN"] },
   { key: "settings", label: "Pengaturan", icon: Settings, roles: ["SUPER_ADMIN"] },
+  { key: "password", label: "Ganti Sandi", icon: ShieldCheck, roles: ["ALL"] },
 ];
 
 export function AdminWorkspace({ section, initialIdentity, focusedVisitId }: { section: string; initialIdentity: AdminIdentity; focusedVisitId?: string }) {
@@ -136,15 +139,13 @@ export function AdminWorkspace({ section, initialIdentity, focusedVisitId }: { s
     if (!quiet) setLoading(true);
     try {
       const params = new URLSearchParams({ ...(search ? { search } : {}), ...(status ? { status } : {}), ...(department ? { department } : {}) });
-      const response = await fetch(`/api/admin/overview?${params}`, { cache: "no-store" });
-      const result = await response.json() as Overview & {error?:string};
-      if (!response.ok) throw new Error(result.error || "Data belum dapat dimuat.");
+      const result = await apiRequest<Overview>(`/api/admin/overview?${params}`);
       if(requestId !== latestRequest.current) return;
       setData(result);
       if (focusedVisitId) setSelectedVisit(result.visits.find((visit: Visit) => visit.id === focusedVisitId) ?? null);
       setError("");
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Data belum dapat dimuat."); }
-    finally { if (!quiet) setLoading(false); }
+    } catch (caught) { if (requestId === latestRequest.current) setError(caught instanceof Error ? caught.message : "Data belum dapat dimuat."); }
+    finally { if (requestId === latestRequest.current) setLoading(false); }
   }, [department, focusedVisitId, search, status]);
 
   useEffect(() => {
@@ -158,25 +159,22 @@ export function AdminWorkspace({ section, initialIdentity, focusedVisitId }: { s
     return () => window.clearInterval(interval);
   }, [load]);
 
+  const mutationPending = useRef(false);
+  const [saving, setSaving] = useState(false);
   async function action(payload: Record<string, unknown>, successMessage = "Perubahan berhasil disimpan.") {
+    if (mutationPending.current) return false;
+    mutationPending.current = true; setSaving(true);
     setError(""); setNotice("");
-    const response = await fetch("/api/admin/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    const result = await response.json() as {error?:string};
-    if (!response.ok) { setError(result.error || "Perubahan belum berhasil."); return false; }
-    setNotice(successMessage);
-    await load(true);
-    return true;
-  }
-
-  async function openNotificationCenter() {
-    setMobileMenu(false);
-    if (!data?.unreadNotifications) return;
-    setData({ ...data, unreadNotifications: 0, notifications: data.notifications.map((item) => item.archivedAt ? item : { ...item, isRead: true, readAt: new Date().toISOString() }) });
-    await fetch("/api/admin/action", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "MARK_ALL_NOTIFICATIONS_READ" }),
-    });
+    try {
+      const result = await apiRequest<{ success: boolean }>("/api/admin/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (result.success !== true) throw new Error("Server belum mengonfirmasi perubahan. Muat ulang data sebelum mencoba kembali.");
+      setNotice(successMessage);
+      await load(true);
+      return true;
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Perubahan belum berhasil.");
+      return false;
+    } finally { mutationPending.current = false; setSaving(false); }
   }
 
   const role = data?.identity.role ?? initialIdentity.role;
@@ -193,12 +191,12 @@ export function AdminWorkspace({ section, initialIdentity, focusedVisitId }: { s
             const Icon = item.icon;
             const href = item.href ?? `/admin/${item.key}`;
             const active = section === item.key;
-            return <Link key={item.key} href={href} aria-current={active ? "page" : undefined} onClick={() => item.key === "notifikasi" ? void openNotificationCenter() : setMobileMenu(false)} className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${active ? "bg-white text-[#063d2f] shadow-lg shadow-black/10" : "text-emerald-50/80 hover:bg-white/10 hover:text-white"}`}><span className={`grid size-8 place-items-center rounded-lg ${active ? "bg-emerald-100 text-[#087f5b]" : "bg-white/8 text-emerald-100 group-hover:bg-white/12"}`}><Icon className="size-[18px]" /></span>{item.label}{item.key === "notifikasi" && pendingNotifications > 0 && <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[10px] font-black text-emerald-950">{pendingNotifications}</span>}</Link>;
+            return <Link key={item.key} href={href} aria-current={active ? "page" : undefined} onClick={() => setMobileMenu(false)} className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${active ? "bg-white text-[#063d2f] shadow-lg shadow-black/10" : "text-emerald-50/80 hover:bg-white/10 hover:text-white"}`}><span className={`grid size-8 place-items-center rounded-lg ${active ? "bg-emerald-100 text-[#087f5b]" : "bg-white/8 text-emerald-100 group-hover:bg-white/12"}`}><Icon className="size-[18px]" /></span>{item.label}{item.key === "notifikasi" && pendingNotifications > 0 && <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[10px] font-black text-emerald-950">{pendingNotifications}</span>}</Link>;
           })}
         </nav>
         <div className="border-t border-white/10 bg-black/10 p-4">
           <div className="flex items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-full bg-emerald-200 text-sm font-black text-emerald-950">{initialIdentity.name.slice(0, 1).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-sm font-extrabold text-white">{initialIdentity.name}</p><p className="truncate text-xs text-emerald-200">{initialIdentity.roleLabel}</p></div></div>
-          <form action="/api/auth/logout" method="post"><button type="submit" className="mt-4 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-xs font-bold text-emerald-100 transition hover:bg-white/10 hover:text-white"><LogOut className="size-4" />Keluar dari Sistem</button></form>
+          <LogoutButton className="text-emerald-100 hover:bg-white/10 hover:text-white" />
         </div>
       </aside>
       {mobileMenu && <button className="fixed inset-0 z-30 bg-black/30 lg:hidden" onClick={() => setMobileMenu(false)} aria-label="Tutup menu" />}
@@ -206,12 +204,15 @@ export function AdminWorkspace({ section, initialIdentity, focusedVisitId }: { s
       <div className="lg:pl-[280px]">
         <header className="sticky top-0 z-20 flex min-h-20 items-center justify-between gap-4 border-b border-slate-200/90 bg-white/95 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3"><button className="grid size-10 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white shadow-sm lg:hidden" onClick={() => setMobileMenu(true)} aria-label="Buka menu"><Menu className="size-5" /></button><div className="min-w-0"><p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#087f5b]">Administrasi Internal</p><h1 className="truncate text-xl font-black tracking-tight text-slate-950 sm:text-2xl">{sectionTitles[section] ?? "Dashboard Pelayanan"}</h1></div></div>
-          <div className="flex items-center gap-2"><div className="mr-2 hidden text-right xl:block"><p className="text-xs font-extrabold text-slate-800">{initialIdentity.name}</p><p className="text-[11px] text-slate-500">{initialIdentity.roleLabel}</p></div><Button variant="outline" size="icon" className="rounded-xl bg-white shadow-sm" title="Muat ulang" onClick={() => load()}><RefreshCw className={loading ? "animate-spin" : ""} /></Button><Button asChild variant="outline" size="icon" className="relative rounded-xl bg-white shadow-sm"><Link href="/admin/notifikasi" onClick={() => void openNotificationCenter()} aria-label={`${pendingNotifications} notifikasi belum dibaca`}><Bell />{pendingNotifications > 0 && <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-rose-600 ring-2 ring-white" />}</Link></Button></div>
+          <div className="flex items-center gap-2"><div className="mr-2 hidden text-right xl:block"><p className="text-xs font-extrabold text-slate-800">{initialIdentity.name}</p><p className="text-[11px] text-slate-500">{initialIdentity.roleLabel}</p></div><Button variant="outline" size="icon" className="rounded-xl bg-white shadow-sm" title="Muat ulang" onClick={() => load()}><RefreshCw className={loading ? "animate-spin" : ""} /></Button>{menu.some(item => item.key === "notifikasi") && <Button asChild variant="outline" size="icon" className="relative rounded-xl bg-white shadow-sm"><Link href="/admin/notifikasi" onClick={() => setMobileMenu(false)} aria-label={`${pendingNotifications} notifikasi belum dibaca`}><Bell />{pendingNotifications > 0 && <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-rose-600 ring-2 ring-white" />}</Link></Button>}</div>
         </header>
         <main className="mx-auto w-full max-w-[1680px] p-4 sm:p-6 lg:p-8">
           {notice && <div className="mb-5 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900 shadow-sm"><CheckCircle2 className="size-5 shrink-0" />{notice}</div>}
           {error && <div role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">{error}</div>}
+          {saving && <p role="status" className="mb-4 text-sm text-emerald-800">Menyimpan perubahan…</p>}
+          <fieldset disabled={saving} aria-busy={saving}>
           {loading && !data ? <LoadingState /> : data && <SectionContent section={section} data={data} search={search} setSearch={setSearch} status={status} setStatus={setStatus} department={department} setDepartment={setDepartment} load={load} action={action} selectVisit={setSelectedVisit} />}
+          </fieldset>
         </main>
       </div>
       <VisitSheet key={selectedVisit?.id ?? "none"} visit={selectedVisit} departments={data?.departments ?? []} onClose={() => setSelectedVisit(null)} action={action} />

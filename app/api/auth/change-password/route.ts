@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   if (newPassword !== (payload.confirmPassword ?? "")) return Response.json({ error: "Konfirmasi sandi baru tidak sama." }, { status: 422 });
   const validation = validatePassword(newPassword);
   if (validation) return Response.json({ error: validation }, { status: 422 });
-  if (currentPassword === newPassword) return Response.json({ error: "Sandi baru harus berbeda dari sandi sementara." }, { status: 422 });
+  if (currentPassword === newPassword) return Response.json({ error: "Sandi baru harus berbeda dari sandi saat ini." }, { status: 422 });
 
   const db = getDb();
   const [credential] = await db.select().from(adminCredentials).where(eq(adminCredentials.userId, identity.id)).limit(1);

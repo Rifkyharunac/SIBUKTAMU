@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiRequest } from "@/lib/api-client";
 import { Eye, EyeOff, LoaderCircle, LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
@@ -18,17 +19,12 @@ export function AdminLoginForm({ returnTo }: { returnTo: string }) {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/auth/login", {
+      const result = await apiRequest<{ success: boolean; mustChangePassword: boolean }>("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-      const body = await response.text();
-      let result: { error?: string; mustChangePassword?: boolean } = {};
-      if (body) {
-        try { result = JSON.parse(body) as typeof result; } catch { result = {}; }
-      }
-      if (!response.ok) throw new Error(result.error || "Layanan login belum merespons dengan benar. Silakan coba kembali.");
+      if (result.success !== true) throw new Error("Layanan belum mengonfirmasi perubahan. Silakan coba kembali.");
       window.location.assign(result.mustChangePassword ? "/admin/password" : returnTo);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Login belum berhasil.");

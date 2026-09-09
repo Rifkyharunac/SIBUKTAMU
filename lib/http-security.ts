@@ -3,8 +3,12 @@ export function rejectUnsafeRequest(request: Request): Response | null {
   if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return null;
   const origin = request.headers.get("origin");
   const site = request.headers.get("sec-fetch-site");
-  if ((origin && origin !== new URL(request.url).origin)
-    || site === "cross-site" || (!origin && site !== "same-origin")) {
+  // Native form POSTs under no-referrer legitimately send Origin: null.
+  // Accept opaque/missing origins only with the browser's same-origin metadata;
+  // never trust a Referer or a client-supplied forwarded host instead.
+  const concreteOrigin = origin && origin !== "null";
+  if ((concreteOrigin && origin !== new URL(request.url).origin)
+    || (site && site !== "same-origin") || (!concreteOrigin && site !== "same-origin")) {
     return Response.json({ error: "Permintaan tidak berasal dari halaman aplikasi. Muat ulang dan coba kembali." }, { status: 403 });
   }
   if (new URL(request.url).pathname !== "/api/auth/logout"
