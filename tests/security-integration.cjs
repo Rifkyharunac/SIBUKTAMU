@@ -49,6 +49,27 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  cookie=oldCookie;res=await route('admin/export').GET(request('admin/export'));assert.equal(res.status,401);cookie=newCookie;console.log('PASS internal login and password session revocation');
  const signature='data:image/png;base64,'+fs.readFileSync(root+'/public/logo-sulteng-small.png').toString('base64');
  res=await route('visits').POST(request('visits',{visitorName:'Test Visitor',visitorType:'Pribadi / Masyarakat',phone:'081234567890',serviceId:catalog.services[0].id,signature,consent:true}));assert.equal(res.status,201,await res.clone().text());const visit=(await res.json()).visit;assert.equal(visit.checkoutToken.length,64);assert.equal(res.headers.get('X-Notification-Id')?.length,36);console.log('PASS submission SQL, token creation and notification queue');
+ const {deliverWhatsApp}=require(root+'/lib/whatsapp-provider.ts');
+ const waEnv={WHATSAPP_PROVIDER:'waha',WAHA_API_URL:'https://waha.example.test',WAHA_API_KEY:'local-test-key',WAHA_SESSION:'default'};
+ let captured;
+ const accepted=await deliverWhatsApp(waEnv,'085214900540','Local test',async(url,init)=>{captured={url,init};return Response.json({id:'waha-test-message'});});
+ assert.equal(accepted.status,'ACCEPTED');assert.equal(captured.url,'https://waha.example.test/api/sendText');assert.equal(captured.init.headers['X-Api-Key'],'local-test-key');assert.equal(captured.init.headers.Authorization,undefined);assert.equal(JSON.parse(captured.init.body).chatId,'6285214900540@c.us');assert.equal(captured.init.redirect,'error');
+ await assert.rejects(()=>deliverWhatsApp({...waEnv,WAHA_API_URL:'http://waha.example.test'},'085214900540','test'),/HTTPS/);
+ await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>Response.json({},{status:401})),/API key/);
+ await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>Response.json({})),/ID pesan/);
+ await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>new Response('<html>private gateway text</html>')),/Respons penyedia tidak valid/);
+ await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>{throw new TypeError('offline')}),/offline/);
+ const notificationId=res.headers.get('X-Notification-Id');
+ sql.prepare('UPDATE whatsapp_notification_logs SET recipient=? WHERE id=?').run('085214900540',notificationId);
+ const savedFetch=global.fetch;Object.assign(env,waEnv);
+ try {
+   global.fetch=async()=>Response.json({id:{_serialized:'waha-persisted-id'}});
+   await require(root+'/lib/whatsapp.ts').dispatchQueuedNotification(notificationId);
+   const log=sql.prepare('SELECT status,provider_message_id,sent_at FROM whatsapp_notification_logs WHERE id=?').get(notificationId);
+   assert.equal(log.status,'ACCEPTED');assert.equal(log.provider_message_id,'waha-persisted-id');assert.equal(log.sent_at,null);
+   const retry=await route('admin/action').POST(request('admin/action',{action:'RETRY_WHATSAPP',id:notificationId}));assert.equal(retry.status,409);
+ }finally{global.fetch=savedFetch;for(const key of Object.keys(waEnv))delete env[key];}
+ console.log('PASS WAHA simulated API, normalization, HTTPS, authentication errors, missing ID and accepted status');
  res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode}));assert.equal(res.status,403);
  res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,token:'f'.repeat(64)}));assert.equal(res.status,403);
  res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,token:visit.checkoutToken}));assert.equal(res.status,200,await res.clone().text());

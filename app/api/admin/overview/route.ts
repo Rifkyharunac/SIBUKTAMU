@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, gte, inArray, like, or, sql } from "drizzle-orm";
+import { whatsappConfiguration, type WhatsAppEnvironment } from "@/lib/whatsapp-provider";
 import { env } from "cloudflare:workers";
 import { getDb } from "@/db";
 import { ensureSeedData } from "@/db/seed";
@@ -162,12 +163,7 @@ export async function GET(request: Request) {
     users: auth.identity.role === "SUPER_ADMIN" ? userRows : [],
     notifications: auth.identity.role === "VIEWER" ? [] : notificationRows,
     unreadNotifications: unread?.value || 0,
-    notificationConfig: {
-      whatsappConfigured: Boolean(
-        (env as typeof env & { WHATSAPP_ACCESS_TOKEN?: string }).WHATSAPP_ACCESS_TOKEN
-        && (env as typeof env & { WHATSAPP_PHONE_NUMBER_ID?: string }).WHATSAPP_PHONE_NUMBER_ID
-      ),
-    },
+    notificationConfig: whatsappConfiguration(env as typeof env & WhatsAppEnvironment),
     auditLogs: auth.identity.role === "SUPER_ADMIN" ? auditRows : [],
     settings: auth.identity.role === "SUPER_ADMIN" ? settingRows : [],
   });
