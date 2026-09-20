@@ -7,3 +7,8 @@ SIBUKTAMU menggunakan paket sumber terbuka yang tercantum pada `package.json` da
 - React, Vinext, Vite, Cloudflare tooling, Drizzle, ExcelJS, pdf-lib, Lucide, dan komponen antarmuka tunduk pada lisensi upstream masing-masing. Lihat berkas LICENSE dalam paket terpasang.
 
 Identitas instansi dan lambang daerah tidak diberikan lisensi merek baru melalui repositori ini.
+
+## SIBUKTAMU application icon
+
+Book Open Check from Lucide: https://lucide.dev/icons/book-open-check
+Used for the app logo and favicon. Full license: public/sibuktamu-icon-license.txt.

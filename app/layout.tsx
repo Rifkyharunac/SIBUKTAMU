@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,10 +8,16 @@ export const metadata: Metadata = {
   },
   description: "Sistem Informasi Buku Tamu Digital Dinas Tenaga Kerja dan Transmigrasi Provinsi Sulawesi Tengah.",
   icons: {
-    icon: "/logo-sulteng-small.png",
-    shortcut: "/logo-sulteng-small.png",
+    icon: [
+      { url: "/favicon.svg?v=sibuktamu-2", type: "image/svg+xml" },
+      { url: "/sibuktamu-icon-32.png?v=2", type: "image/png", sizes: "32x32" },
+    ],
+    shortcut: "/favicon.ico?v=sibuktamu-2",
+    apple: { url: "/sibuktamu-icon-180.png?v=2", sizes: "180x180", type: "image/png" },
   },
 };
+
+export const viewport: Viewport = { themeColor: "#087f5b" };
 
 export default function RootLayout({
   children,

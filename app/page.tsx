@@ -56,7 +56,10 @@ export default function Home() {
         <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-14 sm:px-6 sm:py-20 lg:min-h-[720px] lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:py-24">
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/12 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg backdrop-blur-md"><Clock3 className="size-4 text-emerald-200" />Mudah diisi dari ponsel</div>
-            <p className="mt-6 text-sm font-bold uppercase tracking-[0.22em] text-emerald-200">SIBUKTAMU · Layanan Disnakertrans</p>
+            <div className="mt-6 flex items-center gap-3">
+              <img src="/logo-sibuktamu.svg" width="48" height="48" alt="Logo buku tamu digital SIBUKTAMU" className="size-12 shrink-0 rounded-xl ring-1 ring-white/25" />
+              <div><p className="text-sm font-extrabold uppercase tracking-[0.22em] text-emerald-100">SIBUKTAMU</p><p className="mt-1 text-xs font-semibold tracking-wide text-emerald-200">Buku Tamu Digital · Disnakertrans</p></div>
+            </div>
             <h1 className="mt-3 max-w-2xl text-4xl font-black leading-[1.06] tracking-tight text-white drop-shadow-lg sm:text-5xl lg:text-6xl">Datang, pilih layanan, lalu petugas siap membantu.</h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-emerald-50/90">Buku tamu digital Dinas Tenaga Kerja dan Transmigrasi Provinsi Sulawesi Tengah. Sistem mengarahkan kunjungan ke bidang yang tepat tanpa akun tamu.</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
