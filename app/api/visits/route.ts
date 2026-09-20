@@ -1,9 +1,13 @@
+import { needsPurpose, visitPurpose } from "@/lib/guest-purpose";
+import { notificationRecipients } from "@/lib/notification-recipients";
 import { env } from "cloudflare:workers";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { getDb } from "@/db";
 import { ensureSeedData } from "@/db/seed";
 import {
   departments,
+  users,
+  roles,
   services,
   submissionAttempts,
   visitStatusLogs,
@@ -120,6 +124,7 @@ export async function POST(request: Request) {
     const [service] = await db.select({
       id: services.id,
       name: services.name,
+      category: services.category,
       departmentId: services.departmentId,
       requiresPurpose: services.requiresPurpose,
       serviceWhatsapp: services.whatsappNumber,
@@ -128,9 +133,11 @@ export async function POST(request: Request) {
     }).from(services).innerJoin(departments, eq(services.departmentId, departments.id))
       .where(and(eq(services.id, payload.serviceId!), eq(services.isActive, true), eq(departments.isActive, true))).limit(1);
     if (!service) return Response.json({ error: "Layanan tidak tersedia." }, { status: 422 });
-    if (service.requiresPurpose && !(payload.purpose?.trim())) {
+    if (needsPurpose(service) && !(payload.purpose?.trim())) {
       return Response.json({ error: "Ceritakan singkat keperluan Anda." }, { status: 422 });
     }
+    const purpose = payload.purpose?.trim() || null;
+    const displayedPurpose = visitPurpose(service, purpose ?? "");
 
     const now = new Date();
     const time = witaParts(now);
@@ -169,7 +176,7 @@ export async function POST(request: Request) {
         service.departmentId,
         service.id,
         payload.employeeName?.trim() || null,
-        payload.purpose?.trim() || null,
+        purpose,
         signaturePath,
         checkoutTokenHash,
         time.dateKey,
@@ -186,29 +193,32 @@ export async function POST(request: Request) {
     }
     if (!inserted) throw new Error("Kunjungan tidak berhasil dibuat.");
 
-    const logId = crypto.randomUUID();
-    const runtimeEnv = env as typeof env & { DEFAULT_ADMIN_WHATSAPP?: string };
-    const recipient = service.serviceWhatsapp
-      ?? service.departmentWhatsapp
-      ?? runtimeEnv.DEFAULT_ADMIN_WHATSAPP?.trim()
-      ?? null;
     const message = [
       "🔔 TAMU BARU - DISNAKERTRANS SULTENG",
       "",
       `Nomor : ${inserted.visit_code}`,
       `Nama   : ${payload.visitorName!.trim()}`,
       `Asal   : ${payload.institutionName?.trim() || payload.visitorType}`,
-      `Layanan: ${service.name}`,
+      `Keperluan: ${displayedPurpose}`,
+      `Bidang    : ${service.departmentName}`,
       `Masuk  : ${time.time} WITA`,
       "",
       "Ada tamu yang menunggu pelayanan pada bidang Anda.",
     ].join("\n");
     let notificationQueued = false;
     try {
+      const admins = await db.select({ role: roles.name, departmentId: users.departmentId, whatsappNumber: users.whatsappNumber, isActive: users.isActive })
+        .from(users).innerJoin(roles, eq(users.roleId, roles.id)).where(eq(users.isActive, true));
+      const recipients = notificationRecipients(admins, service.departmentId);
+      const notifications = (recipients.length ? recipients : [null]).map(recipient => ({
+        id: crypto.randomUUID(), visitId: id, recipient, message,
+        status: recipient ? "QUEUED" : "NOT_CONFIGURED",
+        errorMessage: recipient ? null : "Belum ada nomor valid pada akun admin bidang tujuan atau super admin aktif. Perbarui menu Pengguna.",
+      }));
       await db.batch([
         db.insert(submissionAttempts).values({id:crypto.randomUUID(),ipHash,phoneHash,createdAt:time.timestamp}),
         db.insert(visitStatusLogs).values({id:crypto.randomUUID(),visitId:id,toStatus:"BARU",notes:"Kunjungan dikirim oleh tamu"}),
-        db.insert(whatsappNotificationLogs).values({id:logId,visitId:id,recipient,message,status:"QUEUED"}),
+        ...notifications.map(notification => db.insert(whatsappNotificationLogs).values(notification)),
       ]);
       notificationQueued = true;
     } catch { console.error("visit_saved_notification_queue_failed", id); }
@@ -223,9 +233,9 @@ export async function POST(request: Request) {
         checkInAt: inserted.check_in_at,
         time: time.time,
         departmentName: service.departmentName,
-        serviceName: service.name,
+        serviceName: displayedPurpose,
       },
-    }, { status: 201, headers: notificationQueued ? { "X-Notification-Id": logId } : {} });
+    }, { status: 201, headers: notificationQueued ? { "X-Notification-Visit-Id": id } : {} });
   } catch (caught) {
     console.error("visit_submit_failed", caught);
     return Response.json({ error: "Terjadi kendala. Data belum terkirim, silakan coba kembali." }, { status: 500 });

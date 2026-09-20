@@ -29,6 +29,41 @@
       "when": 1788716571857,
       "tag": "0003_classy_greymalkin",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789344000000,
+      "tag": "0004_official_organization_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789430400000,
+      "tag": "0005_revised_visit_destinations",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789516800000,
+      "tag": "0006_visit_purpose_and_reception",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789603200000,
+      "tag": "0007_office_photo_structure",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1789776000000,
+      "tag": "0008_department_other_choices",
+      "breakpoints": true
     }
   ]
 }

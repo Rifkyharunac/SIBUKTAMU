@@ -2,7 +2,7 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import { rejectUnsafeRequest, secureResponse, boundedJsonRequest } from "../lib/http-security";
 import { rateLimit } from "../lib/rate-limit";
-import { dispatchQueuedNotification } from "../lib/whatsapp";
+import { dispatchQueuedNotification, dispatchVisitNotifications } from "../lib/whatsapp";
 import handler from "vinext/server/app-router-entry";
 
 interface Env {
@@ -63,6 +63,9 @@ const worker = {
       }
       const response = await handler.fetch(request, env, ctx);
       const result = secureResponse(response, request);
+      const notificationVisitId = result.headers.get("X-Notification-Visit-Id");
+      result.headers.delete("X-Notification-Visit-Id");
+      if (notificationVisitId) ctx.waitUntil(dispatchVisitNotifications(notificationVisitId).catch(() => console.error("notification_dispatch_failed")));
       const notificationId = result.headers.get("X-Notification-Id");
       result.headers.delete("X-Notification-Id");
       if (notificationId) ctx.waitUntil(dispatchQueuedNotification(notificationId).catch(() => console.error("notification_dispatch_failed")));

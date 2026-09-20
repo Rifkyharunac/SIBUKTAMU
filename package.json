@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vinext build",
     "start": "vinext start",
-    "test": "node --test tests/visit-rules.test.mjs",
+    "test": "node --test tests/visit-rules.test.mjs tests/migration-catalog.test.mjs tests/signature-pad.test.cjs tests/guest-notification.test.mjs",
     "test:security": "node tests/security-integration.cjs",
     "typecheck": "wrangler types worker-env.d.ts && tsc --noEmit",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
@@ -69,5 +69,14 @@
     "wrangler": "4.92.0"
   },
   "type": "module",
-  "displayName": "Buku Tamu Digital Disnakertrans Sulteng"
+  "displayName": "Buku Tamu Digital Disnakertrans Sulteng",
+  "allowScripts": {
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.0": true,
+    "esbuild@0.27.3": true,
+    "sharp@0.34.5": true,
+    "unrs-resolver@1.11.1": true,
+    "workerd@1.20260515.1": true
+  }
 }

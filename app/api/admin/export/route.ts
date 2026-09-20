@@ -6,7 +6,7 @@ import { requireAdminApi, writeAudit } from "@/lib/admin-auth";
 import { witaParts } from "@/lib/time";
 import { buildExcel, buildPdf } from "@/lib/visit-report";
 export const dynamic="force-dynamic";
-const LABOR_DEPARTMENT_IDS=["dept-p4tk","dept-hiwas"];
+const OFFICIAL_DEPARTMENT_IDS=["dept-p4tk","dept-hiwas","dept-pkt","dept-pembangunan","dept-pengembangan","dept-upt-wasnaker-1","dept-upt-wasnaker-2","dept-sekretariat","dept-penerima-tamu"];
 function validDate(value:string|null,fallback:string){return value ?? fallback;}
 export async function GET(request: Request) {
   const auth = await requireAdminApi();
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   const departmentId = auth.identity.role === "ADMIN_BIDANG" ? auth.identity.departmentId : requestedDepartment;
   const conditions = [gte(visits.visitDate, from), lte(visits.visitDate, to)];
   if (departmentId) conditions.push(eq(visits.departmentId, departmentId));
-  else conditions.push(inArray(visits.departmentId, LABOR_DEPARTMENT_IDS));
+  else conditions.push(inArray(visits.departmentId, OFFICIAL_DEPARTMENT_IDS));
 
   const rows = await getDb().select({
     visitCode: visits.visitCode,
@@ -51,16 +51,16 @@ export async function GET(request: Request) {
   if(auth.identity.role === "VIEWER") rows.forEach(row => { row.phone = row.phone.slice(0,4)+"****"+row.phone.slice(-4); });
 
   const [selectedDepartment] = departmentId ? await getDb().select({name:departments.name}).from(departments).where(eq(departments.id,departmentId)).limit(1) : [];
-  const scope = selectedDepartment?.name || "Layanan Tenaga Kerja (P4TK dan HIWAS)";
+  const scope = selectedDepartment?.name || "Seluruh Tujuan Layanan Disnakertrans";
   const config = Object.fromEntries((await getDb().select().from(settings)).map(s=>[s.key,s.value]));
   const generatedAt = new Intl.DateTimeFormat("id-ID", {
     timeZone: "Asia/Makassar",
     dateStyle: "full",
     timeStyle: "short",
   }).format(new Date());
-  const filenameBase = `laporan-layanan-tenaga-kerja-${from}-${to}`;
+  const filenameBase = `laporan-kunjungan-disnakertrans-${from}-${to}`;
 
-  const options = {from,to,scope,generatedAt,signerTitle:config.report_signer_title||"Pejabat yang mengesahkan",signerName:config.report_signer_name||"",signerNip:config.report_signer_nip||"",address:config.office_address||"Jl. RA. Kartini No. 98, Palu Timur, Kota Palu"};
+  const options = {from,to,scope,generatedAt,signerTitle:config.report_signer_title||"Pejabat yang mengesahkan",signerName:config.report_signer_name||"",signerNip:config.report_signer_nip||"",address:config.office_address||"Jl. RA. Kartini No. 98, Kel. Lolu Selatan, Kec. Palu Timur, Kota Palu"};
   await writeAudit({userId:auth.identity.id,action:"EXPORT_REPORT",entity:"visits",newValue:{from,to,format,count:rows.length,departmentId},ipAddress:request.headers.get("cf-connecting-ip")});
   if (format === "pdf") {
     const output = await buildPdf(rows, options);

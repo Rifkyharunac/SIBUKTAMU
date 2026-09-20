@@ -5,7 +5,7 @@ Sistem Informasi Buku Tamu Digital Dinas Tenaga Kerja dan Transmigrasi Provinsi 
 ## Fitur utama
 
 - Form tamu tanpa akun dalam tiga tahap, mobile-first, dan ramah lansia.
-- Master 25 layanan yang dapat diubah Super Admin tanpa mengubah source code.
+- Master tujuan kunjungan untuk lima Kabid, dua UPT Wasnaker, dan Sekretariat Dinas yang dapat diubah Super Admin tanpa mengubah source code.
 - Auto-routing layanan ke bidang yang bertanggung jawab.
 - Nomor antrean harian dan kode `BT-YYYYMMDD-NNN` yang dibuat atomik oleh database.
 - Tanda tangan HTML Canvas yang disimpan sebagai objek privat.
@@ -13,7 +13,7 @@ Sistem Informasi Buku Tamu Digital Dinas Tenaga Kerja dan Transmigrasi Provinsi 
 - Login akun internal dan dashboard berbasis peran: Super Admin, Front Office, Admin Bidang, dan Viewer.
 - Alur status, transfer bidang, notifikasi internal dengan status dibaca/arsip/hapus, WhatsApp log/retry/manual fallback, dan audit trail.
 - QR check-in/check-out, poster A4, laporan Excel `.xlsx`, PDF A4 landscape, pencarian, dan filter.
-- Dashboard khusus layanan tenaga kerja (P4TK dan HIWAS) dengan statistik harian, antrean, durasi, tren, layanan teratas, dan profil pengunjung.
+- Dashboard seluruh tujuan layanan dengan statistik harian, antrean, durasi, tren, layanan teratas, dan profil pengunjung.
 - Survei pelayanan opsional setelah check-out.
 - Honeypot, rate limit, peringatan duplikasi, validasi server, data minimization, dan masking nomor HP untuk Viewer.
 

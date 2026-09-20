@@ -3,41 +3,237 @@ import { getDb } from ".";
 import { departments, roles, services, settings } from "./schema";
 
 const departmentSeed = [
-  ["dept-sekretariat", "SEK", "Sekretariat", "Administrasi umum, persuratan, program, keuangan dan koordinasi"],
-  ["dept-p4tk", "P4TK", "Bidang Pembinaan Pelatihan, Perluasan Penempatan dan Produktivitas Tenaga Kerja", "Pelatihan, lowongan, penempatan, produktivitas dan pekerja migran"],
-  ["dept-hiwas", "HIWAS", "Bidang Pembinaan Hubungan Industrial dan Pengawasan Ketenagakerjaan", "Hubungan industrial, pengupahan, jaminan sosial dan pengawasan"],
-  ["dept-pkt", "PKT", "Bidang Perencanaan Kawasan Transmigrasi", "Perencanaan, potensi dan pertanahan kawasan transmigrasi"],
-  ["dept-pembangunan", "PKTP", "Bidang Pembangunan Kawasan Transmigrasi dan Penataan Persebaran Penduduk", "Pembangunan sarana kawasan dan penataan persebaran penduduk"],
-  ["dept-pengembangan", "PKTDT", "Bidang Pengembangan Kawasan Transmigrasi, Daerah Tertinggal dan Daerah Tertentu", "Pengembangan ekonomi, SDM dan evaluasi kawasan transmigrasi"],
-  ["dept-upt", "UPT", "UPT / Unit Pelayanan Lainnya", "Unit pelayanan teknis dan layanan umum lainnya"],
+  [
+    "dept-p4tk",
+    "P5TK",
+    "Bidang Pembinaan Pelatihan Perluasan Penempatan dan Produktivitas Tenaga Kerja",
+    ""
+  ],
+  [
+    "dept-hiwas",
+    "PHI-WASNAKER",
+    "Bidang Pembinaan Hubungan Industrial dan Pengawasan Ketenagakerjaan",
+    ""
+  ],
+  [
+    "dept-pkt",
+    "PERENCANAAN-KT",
+    "Bidang Perencanaan Kawasan Transmigrasi",
+    ""
+  ],
+  [
+    "dept-pembangunan",
+    "PKTP3",
+    "Bidang Pengembangan Kawasan Transmigrasi dan Penataan Persebaran Penduduk",
+    ""
+  ],
+  [
+    "dept-pengembangan",
+    "PKTDT",
+    "Bidang Pengembangan Kawasan Transmigrasi Daerah Tertinggal dan Daerah Tertentu",
+    ""
+  ],
+  [
+    "dept-upt-wasnaker-1",
+    "UPT-WAS-I",
+    "UPT Wilayah I",
+    ""
+  ],
+  [
+    "dept-upt-wasnaker-2",
+    "UPT-WAS-II",
+    "UPT Wilayah II",
+    ""
+  ],
+  [
+    "dept-penerima-tamu",
+    "PENERIMA-TAMU",
+    "Penerima Tamu",
+    "Bantuan menentukan tujuan kunjungan; antrean operasional buku tamu"
+  ],
+  [
+    "dept-sekretariat",
+    "SEKRETARIAT",
+    "Sekretariat Dinas",
+    "Pilih subbagian atau Sekretaris Dinas"
+  ]
 ] as const;
 
 const serviceSeed = [
-  ["svc-lowongan", "dept-p4tk", "Pencari Kerja / Lowongan Kerja", "Ketenagakerjaan"],
-  ["svc-pelatihan", "dept-p4tk", "Pelatihan Kerja", "Ketenagakerjaan"],
-  ["svc-penempatan", "dept-p4tk", "Penempatan Tenaga Kerja", "Ketenagakerjaan"],
-  ["svc-pmi", "dept-p4tk", "Informasi Pekerja Migran Indonesia", "Ketenagakerjaan"],
-  ["svc-hi", "dept-hiwas", "Hubungan Industrial", "Hubungan Industrial"],
-  ["svc-perselisihan", "dept-hiwas", "Konsultasi Perselisihan Hubungan Industrial", "Hubungan Industrial"],
-  ["svc-upah", "dept-hiwas", "Pengupahan / UMP / UMSP", "Hubungan Industrial"],
-  ["svc-jamsos", "dept-hiwas", "Jaminan Sosial Tenaga Kerja", "Hubungan Industrial"],
-  ["svc-pengawasan", "dept-hiwas", "Pengawasan Ketenagakerjaan", "Pengawasan"],
-  ["svc-pengaduan", "dept-hiwas", "Pengaduan Masalah Ketenagakerjaan", "Pengawasan"],
-  ["svc-perusahaan", "dept-hiwas", "Informasi Perusahaan", "Pengawasan"],
-  ["svc-konsultasi-trans", "dept-pkt", "Konsultasi Transmigrasi", "Transmigrasi"],
-  ["svc-kawasan", "dept-pkt", "Informasi Kawasan Transmigrasi", "Transmigrasi"],
-  ["svc-pertanahan", "dept-pkt", "Pertanahan Transmigrasi", "Transmigrasi"],
-  ["svc-sarana", "dept-pembangunan", "Pembangunan / Sarana Kawasan Transmigrasi", "Transmigrasi"],
-  ["svc-ekonomi", "dept-pengembangan", "Pengembangan Ekonomi Masyarakat Transmigrasi", "Transmigrasi"],
-  ["svc-data", "dept-sekretariat", "Permintaan Data / Informasi", "Informasi"],
-  ["svc-ppid", "dept-sekretariat", "PPID / Informasi Publik", "Informasi"],
-  ["svc-surat", "dept-sekretariat", "Persuratan", "Administrasi"],
-  ["svc-audiensi", "dept-sekretariat", "Audiensi / Koordinasi", "Administrasi"],
-  ["svc-akademik", "dept-sekretariat", "Penelitian / Magang / Akademik", "Administrasi"],
-  ["svc-pegawai", "dept-sekretariat", "Bertemu Pegawai", "Administrasi"],
-  ["svc-rapat", "dept-sekretariat", "Undangan / Rapat", "Administrasi"],
-  ["svc-umum", "dept-upt", "Keperluan Umum", "Umum"],
-  ["svc-lain", "dept-upt", "Lainnya", "Umum"],
+  [
+    "svc-tujuan-p5tk",
+    "dept-p4tk",
+    "Bertemu Kepala Bidang Pembinaan Pelatihan Perluasan Penempatan dan Produktivitas Tenaga Kerja",
+    "Tujuan"
+  ],
+  [
+    "svc-kantor-penempatan",
+    "dept-p4tk",
+    "Seksi Penempatan dan Perluasan Kesempatan Kerja",
+    "Seksi"
+  ],
+  [
+    "svc-kantor-pmi",
+    "dept-p4tk",
+    "Penempatan dan Perlindungan Pekerja Migran Indonesia",
+    "Seksi"
+  ],
+  [
+    "svc-tujuan-phi-wasnaker",
+    "dept-hiwas",
+    "Bertemu Kepala Bidang Pembinaan Hubungan Industrial dan Pengawasan Ketenagakerjaan",
+    "Tujuan"
+  ],
+  [
+    "svc-kantor-organisasi-hi",
+    "dept-hiwas",
+    "Seksi Pembinaan Organisasi Hubungan Industrial",
+    "Seksi"
+  ],
+  [
+    "svc-kantor-syarat-kerja",
+    "dept-hiwas",
+    "Seksi Syarat Kerja, Pengupahan dan Jaminan Sosial",
+    "Seksi"
+  ],
+  [
+    "svc-tujuan-perencanaan-kt",
+    "dept-pkt",
+    "Bertemu Kepala Bidang Perencanaan Kawasan Transmigrasi",
+    "Tujuan"
+  ],
+  [
+    "svc-kantor-potensi",
+    "dept-pkt",
+    "Pembinaan Potensi Kawasan",
+    "Seksi"
+  ],
+  [
+    "svc-kantor-pertanahan",
+    "dept-pkt",
+    "Seksi Penyediaan Tanah dan Pelayanan Pertanahan Transmigrasi",
+    "Seksi"
+  ],
+  [
+    "svc-tujuan-pktp3",
+    "dept-pembangunan",
+    "Bertemu Kepala Bidang Pengembangan Kawasan Transmigrasi dan Penataan Persebaran Penduduk",
+    "Tujuan"
+  ],
+  [
+    "svc-kantor-prasarana",
+    "dept-pembangunan",
+    "Penyiapan Prasarana dan Sarana Permukiman dan Transmigrasi",
+    "Seksi"
+  ],
+  [
+    "svc-kantor-persebaran",
+    "dept-pembangunan",
+    "Penataan dan Persebaran Penduduk",
+    "Seksi"
+  ],
+  [
+    "svc-tujuan-pktdt",
+    "dept-pengembangan",
+    "Bertemu Kepala Bidang Pengembangan Kawasan Transmigrasi Daerah Tertinggal dan Daerah Tertentu",
+    "Tujuan"
+  ],
+  [
+    "svc-kantor-ekonomi-sdm",
+    "dept-pengembangan",
+    "Pengembangan Ekonomi dan SDM Masyarakat Transmigrasi, Daerah Tertinggal dan Daerah Tertentu",
+    "Seksi"
+  ],
+  [
+    "svc-kantor-evaluasi",
+    "dept-pengembangan",
+    "Evaluasi Perkembangan Permukiman Kawasan Transmigrasi dan Sarana Prasarana Daerah Tertinggal dan Daerah Tertentu",
+    "Seksi"
+  ],
+  [
+    "svc-tujuan-upt-wasnaker-1",
+    "dept-upt-wasnaker-1",
+    "Bertemu Kepala UPT Wilayah I",
+    "Tujuan"
+  ],
+  [
+    "svc-kantor-upt-1-tu",
+    "dept-upt-wasnaker-1",
+    "Subbagian Tata Usaha — UPT Wilayah I",
+    "Subbagian"
+  ],
+  [
+    "svc-kantor-upt-1-norma",
+    "dept-upt-wasnaker-1",
+    "Pengawasan Norma Kerja — UPT Wilayah I",
+    "Seksi"
+  ],
+  [
+    "svc-kantor-upt-1-k3",
+    "dept-upt-wasnaker-1",
+    "Pengawasan Norma Kesehatan dan Keselamatan Kerja — UPT Wilayah I",
+    "Seksi"
+  ],
+  [
+    "svc-tujuan-upt-wasnaker-2",
+    "dept-upt-wasnaker-2",
+    "Bertemu Kepala UPT Wilayah II",
+    "Tujuan"
+  ],
+  [
+    "svc-kantor-upt-2-tu",
+    "dept-upt-wasnaker-2",
+    "Subbagian Tata Usaha — UPT Wilayah II",
+    "Subbagian"
+  ],
+  [
+    "svc-kantor-upt-2-norma",
+    "dept-upt-wasnaker-2",
+    "Pengawasan Norma Kerja — UPT Wilayah II",
+    "Seksi"
+  ],
+  [
+    "svc-kantor-upt-2-k3",
+    "dept-upt-wasnaker-2",
+    "Pengawasan Norma Kesehatan dan Keselamatan Kerja — UPT Wilayah II",
+    "Seksi"
+  ],
+  [
+    "svc-lain-tujuan",
+    "dept-penerima-tamu",
+    "Lainnya / Belum tahu tujuan",
+    "Tujuan"
+  ],
+  [
+    "svc-sekretariat-sekretaris",
+    "dept-sekretariat",
+    "Bertemu Sekretaris Dinas",
+    "Bagian Sekretariat"
+  ],
+  [
+    "svc-sekretariat-program",
+    "dept-sekretariat",
+    "Subbagian Program",
+    "Bagian Sekretariat"
+  ],
+  [
+    "svc-sekretariat-keuangan-aset",
+    "dept-sekretariat",
+    "Subbagian Keuangan dan Aset",
+    "Bagian Sekretariat"
+  ],
+  [
+    "svc-sekretariat-kepegawaian",
+    "dept-sekretariat",
+    "Subbagian Kepegawaian dan Umum",
+    "Bagian Sekretariat"
+  ],
+  [
+    "svc-lain-sekretariat",
+    "dept-sekretariat",
+    "Lainnya — Sekretariat Dinas",
+    "Lainnya"
+  ]
 ] as const;
 
 let seeded = false;
@@ -71,7 +267,7 @@ async function seedData() {
       name,
       category,
       displayOrder,
-      requiresPurpose: id === "svc-lain" || id === "svc-pengaduan",
+      requiresPurpose: name.startsWith("Lainnya"),
     }));
     // D1 membatasi jumlah parameter terikat per pernyataan. Penanaman data
     // layanan dipecah agar deployment baru tidak gagal di tengah proses seed.
@@ -80,13 +276,22 @@ async function seedData() {
     }
   }
 
+  const activeDepartments = await db.select().from(departments).where(eq(departments.isActive, true));
+  const existingServices = await db.select().from(services);
+  for (const department of activeDepartments) {
+    if (!existingServices.some(service => service.departmentId === department.id && service.isActive && (service.category === "Lainnya" || service.name.startsWith("Lainnya")))) {
+      await db.insert(services).values({ id: `svc-other-${department.id}`, departmentId: department.id,
+        name: `Lainnya — ${department.name}`, category: "Lainnya", requiresPurpose: true, displayOrder: 999 }).onConflictDoNothing();
+    }
+  }
+
   await db.insert(settings).values([
     { key: "report_signer_title", value: "Pejabat yang mengesahkan" },
     { key: "report_signer_name", value: "" },
     { key: "report_signer_nip", value: "" },
     { key: "office_name", value: "Dinas Tenaga Kerja dan Transmigrasi Provinsi Sulawesi Tengah" },
-    { key: "office_address", value: "Jl. RA. Kartini No. 98, Palu Timur, Kota Palu" },
-    { key: "office_hours", value: "Senin–Jumat, 08.00–16.00 WITA" },
+    { key: "office_address", value: "Jl. RA. Kartini No. 98, Kel. Lolu Selatan, Kec. Palu Timur, Kota Palu" },
+    { key: "office_hours", value: "Senin–Jumat, 08.00–15.00 WITA" },
     { key: "allow_outside_hours", value: "true" },
     { key: "data_retention", value: "Sesuai kebijakan administrator dan ketentuan kearsipan yang berlaku" },
   ]).onConflictDoNothing();

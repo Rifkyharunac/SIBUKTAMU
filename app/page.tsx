@@ -1,31 +1,28 @@
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Activity,
   ArrowRight,
-  BarChart3,
   Bell,
   Building2,
   CheckCircle2,
   Clock3,
-  FileDown,
   LogOut,
-  MessageCircle,
   QrCode,
   ShieldCheck,
-  Users,
 } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { ActiveVisitRedirect } from "@/components/active-visit-redirect";
 import { Button } from "@/components/ui/button";
 
-const laborServices = [
-  "Pencari kerja & lowongan",
-  "Pelatihan dan penempatan kerja",
-  "Hubungan industrial",
-  "Pengupahan & jaminan sosial",
-  "Pengawasan ketenagakerjaan",
-  "Pengaduan masalah tenaga kerja",
+const officialDepartments = [
+  "Bidang Pembinaan Pelatihan Perluasan Penempatan dan Produktivitas Tenaga Kerja",
+  "Bidang Pembinaan Hubungan Industrial dan Pengawasan Ketenagakerjaan",
+  "Bidang Perencanaan Kawasan Transmigrasi",
+  "Bidang Pengembangan Kawasan Transmigrasi dan Penataan Persebaran Penduduk",
+  "Bidang Pengembangan Kawasan Transmigrasi Daerah Tertinggal dan Daerah Tertentu",
+  "UPT Wilayah I",
+  "UPT Wilayah II",
+  "Sekretariat Dinas"
 ];
 
 export default function Home() {
@@ -59,9 +56,9 @@ export default function Home() {
         <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-14 sm:px-6 sm:py-20 lg:min-h-[720px] lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:py-24">
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/12 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg backdrop-blur-md"><Clock3 className="size-4 text-emerald-200" />Mudah diisi dari ponsel</div>
-            <p className="mt-6 text-sm font-bold uppercase tracking-[0.22em] text-emerald-200">SIBUKTAMU · Layanan Tenaga Kerja</p>
+            <p className="mt-6 text-sm font-bold uppercase tracking-[0.22em] text-emerald-200">SIBUKTAMU · Layanan Disnakertrans</p>
             <h1 className="mt-3 max-w-2xl text-4xl font-black leading-[1.06] tracking-tight text-white drop-shadow-lg sm:text-5xl lg:text-6xl">Datang, pilih layanan, lalu petugas siap membantu.</h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-emerald-50/90">Buku tamu digital Dinas Tenaga Kerja dan Transmigrasi Provinsi Sulawesi Tengah. Sistem mengarahkan kunjungan ke bidang tenaga kerja yang tepat tanpa akun tamu.</p>
+            <p className="mt-6 max-w-xl text-lg leading-8 text-emerald-50/90">Buku tamu digital Dinas Tenaga Kerja dan Transmigrasi Provinsi Sulawesi Tengah. Sistem mengarahkan kunjungan ke bidang yang tepat tanpa akun tamu.</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild className="h-13 bg-[#087f5b] px-6 text-base shadow-lg shadow-emerald-900/15 hover:bg-[#066c4d]"><Link href="/kunjungan"><QrCode />Isi buku tamu<ArrowRight /></Link></Button>
               <Button asChild variant="outline" className="h-13 border-white/35 bg-white/12 px-6 text-base text-white backdrop-blur-md hover:bg-white/20 hover:text-white"><Link href="/checkout"><LogOut />Check-out kunjungan</Link></Button>
@@ -94,8 +91,8 @@ export default function Home() {
       <section className="bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
-            <div><p className="text-xs font-black uppercase tracking-[0.2em] text-[#087f5b]">Fokus layanan saat ini</p><h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Kebutuhan ketenagakerjaan dalam satu pintu.</h2><p className="mt-4 leading-7 text-slate-600">Pilih keperluan saat mengisi buku tamu. Sistem meneruskan data kepada bidang P4TK atau HIWAS sesuai layanan.</p></div>
-            <div className="grid gap-3 sm:grid-cols-2">{laborServices.map((service, index) => <div key={service} className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-[#f8fbfa] p-4 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-100 text-sm font-black text-[#087f5b]">{String(index + 1).padStart(2, "0")}</span><p className="font-bold text-slate-800">{service}</p></div>)}</div>
+            <div><p className="text-xs font-black uppercase tracking-[0.2em] text-[#087f5b]">Layanan resmi</p><h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Layanan ketenagakerjaan dan transmigrasi dalam satu pintu.</h2><p className="mt-4 leading-7 text-slate-600">Pilih bidang dan keperluan saat mengisi buku tamu. Sistem meneruskan data kepada bidang penanggung jawab sesuai struktur organisasi.</p></div>
+            <div className="grid gap-3 sm:grid-cols-2">{officialDepartments.map((department, index) => <div key={department} className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-[#f8fbfa] p-4 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-100 text-sm font-black text-[#087f5b]">{String(index + 1).padStart(2, "0")}</span><p className="font-bold text-slate-800">{department}</p></div>)}</div>
           </div>
           <div className="mt-14 grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-slate-200 p-5"><Building2 className="size-6 text-[#087f5b]" /><h3 className="mt-4 font-black">Bidang tujuan jelas</h3><p className="mt-2 text-sm leading-6 text-slate-600">Layanan langsung diarahkan ke bidang penanggung jawab yang tepat.</p></div>
@@ -107,8 +104,8 @@ export default function Home() {
 
       <footer className="border-t border-slate-200 bg-[#f4f8f7]">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-7 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div><p className="font-bold text-slate-700">Dinas Tenaga Kerja dan Transmigrasi Provinsi Sulawesi Tengah</p><p className="mt-1">Jl. RA. Kartini No. 98, Palu Timur, Kota Palu</p></div>
-          <Link href="/privacy" className="font-semibold text-[#087f5b]">Kebijakan Privasi</Link>
+          <div><p className="font-bold text-slate-700">Dinas Tenaga Kerja dan Transmigrasi Provinsi Sulawesi Tengah</p><p className="mt-1">Jl. RA. Kartini No. 98, Kel. Lolu Selatan, Kec. Palu Timur, Kota Palu</p></div>
+          <a href="mailto:disnakertrans@sultengprov.go.id" className="font-semibold text-[#087f5b]">disnakertrans@sultengprov.go.id</a><p>Pelayanan informasi: Senin–Jumat, 08.00–15.00 WITA</p><Link href="/privacy" className="font-semibold text-[#087f5b]">Kebijakan Privasi</Link>
         </div>
       </footer>
     </main>

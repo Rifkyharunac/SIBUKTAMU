@@ -11,7 +11,6 @@ import {
   CircleHelp,
   Factory,
   LoaderCircle,
-  Mail,
   Map,
   Search,
   ShieldCheck,
@@ -23,9 +22,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { needsPurpose, visitPurpose } from "@/lib/guest-purpose";
 import { saveActiveVisit } from "@/lib/active-visit";
 
-type Department = { id: string; name: string };
+type Department = { id: string; name: string; code: string; description: string };
 type Service = {
   id: string;
   name: string;
@@ -44,17 +44,22 @@ const visitorTypes = [
   "Lainnya",
 ];
 
-const stepLabels = ["Identitas", "Layanan", "Konfirmasi"];
+const stepLabels = ["Identitas", "Tujuan Kunjungan", "Konfirmasi"];
 
-const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  Ketenagakerjaan: BriefcaseBusiness,
-  "Hubungan Industrial": Users,
-  Pengawasan: Factory,
-  Transmigrasi: Map,
-  Informasi: CircleHelp,
-  Administrasi: Mail,
-  Umum: Building2,
+const departmentIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  "dept-p4tk": BriefcaseBusiness,
+  "dept-hiwas": Users,
+  "dept-pkt": Map,
+  "dept-pembangunan": Building2,
+  "dept-pengembangan": Factory,
+  "dept-upt-wasnaker-1": ShieldCheck,
+  "dept-upt-wasnaker-2": ShieldCheck,
+  "dept-sekretariat": Building2,
 };
+
+function serviceLabel(service: Service) {
+  return service.name.startsWith("Lainnya —") ? "Lainnya" : service.name;
+}
 
 export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_TAMU" | "FRONT_OFFICE" | "KIOSK"; kiosk?: boolean }) {
   const [step, setStep] = useState(1);
@@ -91,18 +96,33 @@ export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_
   const selectedDepartment = catalog.departments.find((department) => department.id === selectedService?.departmentId);
   const visibleServices = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return term ? catalog.services.filter((service) => `${service.name} ${service.category}`.toLowerCase().includes(term)) : catalog.services;
-  }, [catalog.services, search]);
-  const groupedServices = useMemo(() => {
-    return visibleServices.reduce<Record<string, Service[]>>((groups, service) => {
-      (groups[service.category] ??= []).push(service);
-      return groups;
-    }, {});
-  }, [visibleServices]);
+    return term ? catalog.services.filter((service) => {
+      const department = catalog.departments.find((item) => item.id === service.departmentId);
+      return `${service.name} ${service.category} ${department?.name ?? ""} ${department?.code ?? ""}`.toLowerCase().includes(term);
+    }) : catalog.services;
+  }, [catalog.departments, catalog.services, search]);
+  const servicesByDepartment = useMemo(() => catalog.departments.map((department) => ({
+    department,
+    services: visibleServices.filter((service) => service.departmentId === department.id),
+  })).filter((group) => group.services.length > 0), [catalog.departments, visibleServices]);
+  const displayedPurpose = visitPurpose(selectedService, form.purpose);
 
   function patch<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((current) => ({ ...current, [key]: value }));
     setError("");
+    setDuplicateWarning(false);
+  }
+
+  function selectService(service: Service) {
+    setForm((current) => ({
+      ...current,
+      serviceId: service.id,
+      employeeName: current.serviceId === service.id ? current.employeeName : "",
+      purpose: current.serviceId === service.id ? current.purpose : "",
+    }));
+    setError("");
+    setDuplicateWarning(false);
+    setSearch("");
   }
 
   function nextFromIdentity() {
@@ -115,12 +135,15 @@ export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_
 
   function nextFromService() {
     if (!form.serviceId) return setError("Pilih satu keperluan agar kami dapat menentukan bidang tujuan.");
+    if (needsPurpose(selectedService) && !form.purpose.trim()) return setError("Tuliskan maksud dan tujuan kunjungan Anda.");
     setError("");
     setStep(3);
   }
 
   async function submit(confirmDuplicate = false) {
-    if (selectedService?.requiresPurpose && !form.purpose.trim()) return setError("Ceritakan singkat keperluan Anda.");
+    if (needsPurpose(selectedService) && !form.purpose.trim()) return setError("Ceritakan singkat keperluan Anda.");
+    if (!selectedService) return setError("Pilih layanan terlebih dahulu.");
+    if (submitting) return;
     if (!form.signature) return setError("Tanda tangan digital belum diisi.");
     if (!form.consent) return setError("Centang persetujuan penggunaan data untuk melanjutkan.");
     setSubmitting(true);
@@ -181,7 +204,7 @@ export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_
       <div className="guest-progress mb-7 flex items-start justify-center" aria-label={`Tahap ${step} dari 3`}>
         {[1, 2, 3].map((number, index) => (
           <div key={number} className="flex items-start">
-            <div className="flex w-20 flex-col items-center sm:w-28">
+            <div className="flex w-24 flex-col items-center sm:w-32">
               <div className={`grid size-10 place-items-center rounded-full border-2 text-sm font-bold shadow-sm ${number <= step ? "border-[#087f5b] bg-[#087f5b] text-white shadow-emerald-900/20" : "border-slate-300 bg-white text-slate-500"}`}>
                 {number < step ? <Check className="size-4" /> : number}
               </div>
@@ -195,7 +218,7 @@ export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_
       <div className="guest-form-card overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/95 shadow-[0_28px_70px_rgba(4,61,49,0.16)] backdrop-blur-sm">
         <div className="border-b border-emerald-900/10 bg-gradient-to-r from-emerald-50 to-white px-5 py-5 sm:px-8">
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Tahap {step} dari 3</p>
-          <h2 className="mt-1 text-xl font-bold text-slate-900">{step === 1 ? "Identitas singkat" : step === 2 ? "Apa keperluan Anda?" : "Detail dan konfirmasi"}</h2>
+          <h2 className="mt-1 text-xl font-bold text-slate-900">{step === 1 ? "Identitas singkat" : step === 2 ? "Tujuan kunjungan" : "Detail dan konfirmasi"}</h2>
         </div>
 
         <div className="p-5 sm:p-8">
@@ -223,39 +246,49 @@ export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_
 
           {step === 2 && (
             <div>
+              <p className="mb-5 text-sm leading-6 text-slate-600">Pilih bidang, UPT, atau Sekretariat, kemudian pilih seksi, subbagian, atau pejabat yang ingin ditemui. Susunan mengikuti papan struktur organisasi di kantor.</p>
               <div className="relative mb-5">
                 <Search className="pointer-events-none absolute left-4 top-3.5 size-5 text-slate-400" />
-                <Input className="h-12 rounded-xl pl-11" placeholder="Cari layanan, misalnya UMP atau pelatihan" value={search} onChange={(event) => setSearch(event.target.value)} />
+                <Input className="h-12 rounded-xl pl-11" placeholder="Cari bidang atau layanan" value={search} onChange={(event) => setSearch(event.target.value)} />
               </div>
               {catalogError && <ErrorBox>{catalogError}</ErrorBox>}
               {!catalogError && catalog.services.length === 0 && <div className="py-16 text-center text-sm text-slate-500"><LoaderCircle className="mx-auto mb-3 size-6 animate-spin text-[#087f5b]" />Memuat layanan…</div>}
-              <div className="space-y-6">
-                {Object.entries(groupedServices).map(([category, servicesInCategory]) => {
-                  const Icon = categoryIcons[category] ?? CircleHelp;
+              <div className="grid gap-3 sm:grid-cols-2">
+                {servicesByDepartment.map(({ department, services }) => {
+                  const Icon = departmentIcons[department.id] ?? CircleHelp;
                   return (
-                    <div key={category}>
-                      <div className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-600"><Icon className="size-4 text-[#087f5b]" />{category}</div>
+                    <div key={department.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:col-span-2 sm:p-5">
+                      <div className="mb-4 flex items-start gap-3">
+                        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-[#087f5b]"><Icon className="size-5" /></span>
+                        <div><p className="text-sm font-extrabold leading-5 text-slate-800">{department.name}</p>{department.description && <p className="mt-1 text-xs leading-5 text-slate-500">{department.description}</p>}</div>
+                      </div>
                       <div className="grid gap-2 sm:grid-cols-2">
-                        {servicesInCategory.map((service) => (
+                        {services.map((service) => (
                           <button
                             type="button"
                             key={service.id}
-                            onClick={() => patch("serviceId", service.id)}
+                            onClick={() => selectService(service)}
                             className={`service-choice flex min-h-18 items-center justify-between gap-3 rounded-2xl border p-4 text-left text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-100 ${form.serviceId === service.id ? "border-[#087f5b] bg-emerald-50 text-emerald-950 shadow-[0_10px_24px_rgba(8,127,91,0.12)]" : "border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-50/50 hover:shadow-md"}`}
                           >
-                            <span>{service.name}</span>{form.serviceId === service.id ? <Check className="size-5 shrink-0 text-[#087f5b]" /> : <ChevronRight className="size-4 shrink-0 text-slate-400" />}
+                            <span>{serviceLabel(service)}</span>{form.serviceId === service.id ? <Check className="size-5 shrink-0 text-[#087f5b]" /> : <ChevronRight className="size-4 shrink-0 text-slate-400" />}
                           </button>
                         ))}
                       </div>
+                      {selectedService?.departmentId === department.id && (
+                        <div className="mt-4"><Field label={needsPurpose(selectedService) ? "Jelaskan keperluan Anda" : "Keterangan tambahan"} hint={needsPurpose(selectedService) ? "Wajib diisi untuk pilihan ini" : "Opsional; boleh langsung lanjut"} required={needsPurpose(selectedService)}>
+                          <Textarea aria-label="Penjelasan keperluan" maxLength={1000} className="min-h-24 rounded-xl" placeholder="Tuliskan keperluan Anda di bidang ini" value={form.purpose} onChange={(event) => patch("purpose", event.target.value)} />
+                        </Field></div>
+                      )}
                     </div>
                   );
                 })}
-                {visibleServices.length === 0 && <p className="rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500">Layanan tidak ditemukan. Pilih “Lainnya” atau ubah kata pencarian.</p>}
+                {visibleServices.length === 0 && <p className="rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500 sm:col-span-2">Layanan tidak ditemukan. Pilih “Lainnya” atau ubah kata pencarian.</p>}
               </div>
               {selectedService && (
                 <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#087f5b]">Otomatis diarahkan ke</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#087f5b]">Tujuan kunjungan</p>
                   <p className="mt-1 text-sm font-semibold text-emerald-950">{selectedDepartment?.name}</p>
+                  {selectedService.category !== "Tujuan" && <p className="mt-0.5 text-xs text-emerald-800">{serviceLabel(selectedService)}</p>}
                 </div>
               )}
             </div>
@@ -267,13 +300,10 @@ export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Summary label="Nama" value={form.visitorName} />
                   <Summary label="WhatsApp" value={form.phone} />
-                  <Summary label="Keperluan" value={selectedService?.name} />
-                  <Summary label="Bidang tujuan" value={selectedDepartment?.name} />
+                  <Summary label="Maksud dan tujuan" value={displayedPurpose} />
+                  <Summary label="Tujuan" value={selectedDepartment?.name} />
                 </div>
               </div>
-              <Field label="Ceritakan secara singkat keperluan Anda" hint={selectedService?.requiresPurpose ? "Wajib untuk layanan yang dipilih" : "Opsional, cukup satu kalimat"} required={selectedService?.requiresPurpose}>
-                <Textarea className="min-h-24 rounded-xl" placeholder="Contoh: ingin berkonsultasi mengenai informasi UMP." value={form.purpose} onChange={(event) => patch("purpose", event.target.value)} />
-              </Field>
               {selectedService?.allowsEmployee && (
                 <Field label="Pegawai yang ingin ditemui" hint="Opsional — kosongkan jika belum tahu">
                   <Input className="h-12 rounded-xl" placeholder="Ketik nama pegawai, jika ada" value={form.employeeName} onChange={(event) => patch("employeeName", event.target.value)} />
@@ -299,7 +329,7 @@ export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_
           )}
 
           <div className="mt-8 flex items-center justify-between gap-3 border-t border-slate-100 pt-5">
-            {step > 1 ? <Button type="button" variant="ghost" className="h-12 px-4" onClick={() => { setStep((current) => current - 1); setError(""); }}><ArrowLeft />Kembali</Button> : <span />}
+            {step > 1 ? <Button type="button" variant="ghost" className="h-12 px-4" disabled={submitting} onClick={() => { setStep((current) => current - 1); patch("signature", ""); setDuplicateWarning(false); setError(""); }}><ArrowLeft />Kembali</Button> : <span />}
             {step === 1 && <Button type="button" className="h-13 rounded-xl bg-[#087f5b] px-7 text-base shadow-lg shadow-emerald-900/15 hover:bg-[#066c4d]" onClick={nextFromIdentity}>Lanjutkan<ArrowRight /></Button>}
             {step === 2 && <Button type="button" className="h-13 rounded-xl bg-[#087f5b] px-7 text-base shadow-lg shadow-emerald-900/15 hover:bg-[#066c4d]" onClick={nextFromService}>Lanjutkan<ArrowRight /></Button>}
             {step === 3 && <Button type="button" className="h-13 rounded-xl bg-[#087f5b] px-7 text-base shadow-lg shadow-emerald-900/15 hover:bg-[#066c4d]" disabled={submitting || duplicateWarning} onClick={() => submit(false)}>{submitting ? <><LoaderCircle className="animate-spin" />Mengirim…</> : <><Check />Kirim data kunjungan</>}</Button>}
@@ -316,7 +346,7 @@ function Field({ label, hint, required, children }: { label: string; hint?: stri
 }
 
 function Summary({ label, value }: { label: string; value?: string | null }) {
-  return <div><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</p><p className="mt-0.5 font-semibold text-slate-800">{value || "—"}</p></div>;
+  return <div><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</p><p className="mt-0.5 whitespace-pre-wrap break-words font-semibold text-slate-800">{value || "—"}</p></div>;
 }
 
 function ErrorBox({ children }: { children: React.ReactNode }) {

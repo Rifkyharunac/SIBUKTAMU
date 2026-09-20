@@ -43,27 +43,36 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  finally {global.fetch=realFetch;}
  console.log('PASS empty/HTML API responses and offline errors handled');
  let res=await route('public/catalog').GET();assert.equal(res.status,200);const catalog=await res.json();assert.ok(!('whatsappNumber' in catalog.services[0]));
+ assert.equal(catalog.departments.length,9);assert.equal(catalog.services.length,36);
+ assert.equal(catalog.departments.at(-1).name,'Sekretariat Dinas');
+ for(const department of catalog.departments){const items=catalog.services.filter(service=>service.departmentId===department.id);assert.equal(items.filter(service=>service.name.startsWith('Lainnya')).length,1);for(const service of items)assert.equal(service.requiresPurpose,service.name.startsWith('Lainnya'));}
+
  res=await route('admin/export').GET(request('admin/export'));assert.equal(res.status,401);console.log('PASS public catalog privacy and export authentication');
  res=await route('auth/login').POST(request('auth/login',{username:'testadmin',password:env.INITIAL_ADMIN_PASSWORD}));assert.equal(res.status,200,await res.clone().text());cookie=res.headers.get('set-cookie').split(';')[0];const oldCookie=cookie;
  res=await route('auth/change-password').POST(request('auth/change-password',{currentPassword:env.INITIAL_ADMIN_PASSWORD,newPassword:'NewLocalTestOnly9Password',confirmPassword:'NewLocalTestOnly9Password'}));assert.equal(res.status,200,await res.clone().text());cookie=res.headers.get('set-cookie').split(';')[0];const newCookie=cookie;assert.notEqual(cookie,oldCookie);
  cookie=oldCookie;res=await route('admin/export').GET(request('admin/export'));assert.equal(res.status,401);cookie=newCookie;console.log('PASS internal login and password session revocation');
  const signature='data:image/png;base64,'+fs.readFileSync(root+'/public/logo-sulteng-small.png').toString('base64');
- res=await route('visits').POST(request('visits',{visitorName:'Test Visitor',visitorType:'Pribadi / Masyarakat',phone:'081234567890',serviceId:catalog.services[0].id,signature,consent:true}));assert.equal(res.status,201,await res.clone().text());const visit=(await res.json()).visit;assert.equal(visit.checkoutToken.length,64);assert.equal(res.headers.get('X-Notification-Id')?.length,36);console.log('PASS submission SQL, token creation and notification queue');
+ const otherService=catalog.services.find(service=>service.id==='svc-lain-tujuan');assert.ok(otherService);assert.equal(otherService.departmentId,'dept-penerima-tamu');
+ const directService=catalog.services.find(service=>service.id==='svc-tujuan-p5tk');
+ res=await route('visits').POST(request('visits',{visitorName:'Test Visitor',visitorType:'Pribadi / Masyarakat',phone:'081234567899',serviceId:directService.id,signature,consent:true}));assert.equal(res.status,201,await res.clone().text());assert.equal((await res.json()).visit.serviceName,directService.name);
+ res=await route('visits').POST(request('visits',{visitorName:'Test Visitor',visitorType:'Pribadi / Masyarakat',phone:'081234567890',serviceId:otherService.id,signature,consent:true}));assert.equal(res.status,422);assert.match((await res.json()).error,/keperluan/i);
+ const customPurpose='Konsultasi program kerja sama pelatihan untuk masyarakat';
+ res=await route('visits').POST(request('visits',{visitorName:'Test Visitor',visitorType:'Pribadi / Masyarakat',phone:'081234567890',serviceId:otherService.id,purpose:customPurpose,signature,consent:true}));assert.equal(res.status,201,await res.clone().text());const visit=(await res.json()).visit;assert.equal(visit.checkoutToken.length,64);assert.equal(visit.serviceName,customPurpose);assert.equal(sql.prepare('SELECT purpose FROM visits WHERE visit_code=?').get(visit.visitCode).purpose,customPurpose);assert.equal(res.headers.get('X-Notification-Visit-Id')?.length,36);console.log('PASS official catalog, custom purpose submission and notification queue');
  const {deliverWhatsApp}=require(root+'/lib/whatsapp-provider.ts');
  const waEnv={WHATSAPP_PROVIDER:'waha',WAHA_API_URL:'https://waha.example.test',WAHA_API_KEY:'local-test-key',WAHA_SESSION:'default'};
  let captured;
- const accepted=await deliverWhatsApp(waEnv,'085214900540','Local test',async(url,init)=>{captured={url,init};return Response.json({id:'waha-test-message'});});
- assert.equal(accepted.status,'ACCEPTED');assert.equal(captured.url,'https://waha.example.test/api/sendText');assert.equal(captured.init.headers['X-Api-Key'],'local-test-key');assert.equal(captured.init.headers.Authorization,undefined);assert.equal(JSON.parse(captured.init.body).chatId,'6285214900540@c.us');assert.equal(captured.init.redirect,'error');
+ const accepted=await deliverWhatsApp(waEnv,'085214900540','Local test',async(url,init)=>{if(url.endsWith('/me'))return Response.json({id:'628111111111@c.us'});captured={url,init};return Response.json({id:'waha-test-message'});});
+ assert.equal(accepted.status,'ACCEPTED');assert.equal(captured.url,'https://waha.example.test/api/sendText');assert.equal(captured.init.headers['X-Api-Key'],'local-test-key');assert.equal(captured.init.headers.Authorization,undefined);assert.equal(JSON.parse(captured.init.body).chatId,'6285214900540@c.us');assert.equal(captured.init.redirect,'manual');
  await assert.rejects(()=>deliverWhatsApp({...waEnv,WAHA_API_URL:'http://waha.example.test'},'085214900540','test'),/HTTPS/);
  await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>Response.json({},{status:401})),/API key/);
- await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>Response.json({})),/ID pesan/);
+ await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async(url)=>Response.json(url.endsWith('/me')?{id:'628111111111@c.us'}:{})),/ID pesan/);
  await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>new Response('<html>private gateway text</html>')),/Respons penyedia tidak valid/);
  await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>{throw new TypeError('offline')}),/offline/);
- const notificationId=res.headers.get('X-Notification-Id');
- sql.prepare('UPDATE whatsapp_notification_logs SET recipient=? WHERE id=?').run('085214900540',notificationId);
+ const notificationId=sql.prepare('SELECT id FROM whatsapp_notification_logs WHERE visit_id=?').get(visit.id).id;
+ sql.prepare("UPDATE whatsapp_notification_logs SET status='QUEUED', recipient=? WHERE id=?").run('085214900540',notificationId);
  const savedFetch=global.fetch;Object.assign(env,waEnv);
  try {
-   global.fetch=async()=>Response.json({id:{_serialized:'waha-persisted-id'}});
+   global.fetch=async(url)=>Response.json(url.endsWith('/me')?{id:'628111111111@c.us'}:{id:{_serialized:'waha-persisted-id'}});
    await require(root+'/lib/whatsapp.ts').dispatchQueuedNotification(notificationId);
    const log=sql.prepare('SELECT status,provider_message_id,sent_at FROM whatsapp_notification_logs WHERE id=?').get(notificationId);
    assert.equal(log.status,'ACCEPTED');assert.equal(log.provider_message_id,'waha-persisted-id');assert.equal(log.sent_at,null);
@@ -74,9 +83,27 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,token:'f'.repeat(64)}));assert.equal(res.status,403);
  res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,token:visit.checkoutToken}));assert.equal(res.status,200,await res.clone().text());
  res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,token:visit.checkoutToken}));assert.equal((await res.json()).alreadyCompleted,true);console.log('PASS private checkout and repeated completion');
+ // All eligible accounts, normalized once; unrelated/inactive users must not receive guest data.
+ sql.prepare("UPDATE users SET whatsapp_number='081111111112' WHERE role_id='role-super'").run();
+ const addAdmin=sql.prepare('INSERT INTO users (id,name,email,role_id,department_id,whatsapp_number,is_active) VALUES (?,?,?,?,?,?,?)');
+ addAdmin.run('field1','Field1','field1@example.invalid','role-department',directService.departmentId,'081111111113',1);
+ addAdmin.run('field2','Field2','field2@example.invalid','role-department',directService.departmentId,'+6281111111113',1);
+ addAdmin.run('otherfield','Other','other@example.invalid','role-department','dept-hiwas','081111111114',1);
+ addAdmin.run('inactive','Inactive','inactive@example.invalid','role-department',directService.departmentId,'081111111115',0);
+ const routed=await route('visits').POST(request('visits',{visitorName:'Routing Test',visitorType:'Pribadi / Masyarakat',phone:'081234567877',serviceId:directService.id,signature,consent:true}));
+ assert.equal(routed.status,201,await routed.clone().text()); const routedVisit=(await routed.json()).visit;
+ assert.deepEqual(sql.prepare('SELECT recipient FROM whatsapp_notification_logs WHERE visit_id=? ORDER BY recipient').all(routedVisit.id).map(r=>r.recipient),['6281111111112','6281111111113']);
+ const realTransport=global.fetch;Object.assign(env,waEnv);const delivered=[];
+ try {
+   global.fetch=async(url,init)=>{if(url.endsWith('/me'))return Response.json({id:'628111111111@c.us'});delivered.push(JSON.parse(init.body).chatId);return Response.json({id:'message-'+delivered.length});};
+   const {dispatchVisitNotifications}=require(root+'/lib/whatsapp.ts');
+   await Promise.all([dispatchVisitNotifications(routedVisit.id),dispatchVisitNotifications(routedVisit.id)]);
+   assert.deepEqual(delivered.sort(),['6281111111112@c.us','6281111111113@c.us']);
+ }finally{global.fetch=realTransport;for(const key of Object.keys(waEnv))delete env[key];}
+ console.log('PASS multi-admin routing, inactive/other department exclusion, deduplication and concurrent dispatch');
  res=await route('admin/export').GET(request('admin/export?format=pdf'));assert.equal(res.status,200);assert.ok((await res.arrayBuffer()).byteLength>1000);
  res=await route('admin/export').GET(request('admin/export?format=xlsx'));assert.equal(res.status,200);assert.ok((await res.arrayBuffer()).byteLength>1000);console.log('PASS authenticated PDF and Excel export');
- const row=sql.prepare('SELECT id FROM visits LIMIT 1').get();
+ const row={id:visit.id};
  for(let i=0;i<125;i++) sql.prepare("INSERT INTO whatsapp_notification_logs (id,visit_id,message,status) VALUES (?,?,?,'NOT_CONFIGURED')").run('notice-'+i,row.id,'Local test');
  res=await route('admin/action').POST(request('admin/action',{action:'MARK_ALL_NOTIFICATIONS_READ'}));assert.equal(res.status,200,await res.clone().text());assert.equal(sql.prepare('SELECT COUNT(*) n FROM whatsapp_notification_logs WHERE is_read=0').get().n,0);console.log('PASS marking more than 100 notifications read');
  const adminAction=async payload=>{const r=await route('admin/action').POST(request('admin/action',payload));assert.equal(r.status,200,await r.clone().text());return r.json();};
@@ -102,7 +129,7 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  console.log('PASS master data updates, inactive catalog, settings, terminal status, survey and notification archive/delete');
  sql.prepare("UPDATE users SET role_id='role-viewer' WHERE id=(SELECT user_id FROM admin_credentials WHERE username='testadmin')").run();
  res=await route('admin/signature').GET(request('admin/signature?key=signatures/test'));assert.equal(res.status,403);
- res=await route('admin/overview').GET(request('admin/overview'));assert.equal(res.status,200);const data=await res.json();assert.equal(data.notifications.length,0);assert.ok(data.visits.every(v=>!v.signaturePath&&v.phone.includes('****')));console.log('PASS viewer restrictions');
+ res=await route('admin/overview').GET(request('admin/overview'));assert.equal(res.status,200);const data=await res.json();assert.equal(data.notifications.length,0);assert.equal(data.visits.length,3);assert.ok(data.visits.every(v=>!v.signaturePath&&v.phone.includes('****')));console.log('PASS viewer restrictions');
  sql.prepare("UPDATE users SET role_id='role-department',department_id=NULL WHERE id=(SELECT user_id FROM admin_credentials WHERE username='testadmin')").run();res=await route('admin/export').GET(request('admin/export'));assert.equal(res.status,403);console.log('PASS missing department fails closed');
  const {rateLimit}=require(root+'/lib/rate-limit.ts');for(let i=0;i<3;i++)await rateLimit(request('auth/login'),'test',3,900);res=await rateLimit(request('auth/login'),'test',3,900);assert.equal(res.status,429);console.log('PASS atomic request rate limit');
  const auth=require(root+'/lib/admin-auth.ts');

@@ -194,7 +194,7 @@ export async function POST(request: Request) {
       if ("error" in access) return access.error;
       const [log] = await db.select().from(whatsappNotificationLogs).where(eq(whatsappNotificationLogs.id, id)).limit(1);
       if (!log) return Response.json({ error: "Notifikasi tidak ditemukan." }, { status: 404 });
-      if (["SENT", "ACCEPTED"].includes(log.status) || (log.status === "QUEUED" && Date.now()-new Date(log.createdAt).getTime()<60000) || log.attempts >= 5) return Response.json({error:"Pesan sudah dikirim, sedang diproses, atau mencapai batas percobaan."},{status:409});
+      if (["SENT", "ACCEPTED", "SENDING"].includes(log.status) || (log.status === "QUEUED" && Date.now()-new Date(log.createdAt).getTime()<60000) || log.attempts >= 5) return Response.json({error:"Pesan sudah dikirim, sedang diproses, atau mencapai batas percobaan."},{status:409});
       await sendWhatsAppNotification({ logId: log.id, recipient: log.recipient, message: log.message });
       await writeAudit({ userId: identity.id, action: "RETRY_WHATSAPP", entity: "whatsapp_notification_logs", entityId: id, ipAddress });
       return Response.json({ success: true });

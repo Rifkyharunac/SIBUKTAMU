@@ -20,7 +20,7 @@ import { witaParts } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
-const LABOR_DEPARTMENT_IDS = ["dept-p4tk", "dept-hiwas"];
+const OFFICIAL_DEPARTMENT_IDS = ["dept-p4tk", "dept-hiwas", "dept-pkt", "dept-pembangunan", "dept-pengembangan", "dept-upt-wasnaker-1", "dept-upt-wasnaker-2", "dept-sekretariat","dept-penerima-tamu"];
 
 function maskedPhone(value: string) {
   return value.length > 8 ? `${value.slice(0, 4)}****${value.slice(-4)}` : "********";
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
   const conditions = [];
   if (departmentFilter) conditions.push(eq(visits.departmentId, departmentFilter));
-  else conditions.push(inArray(visits.departmentId, LABOR_DEPARTMENT_IDS));
+  else conditions.push(inArray(visits.departmentId, OFFICIAL_DEPARTMENT_IDS));
   if (status) conditions.push(eq(visits.status, status));
   if (search) {
     const term = `%${search}%`;
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
 
   const scopeCondition = departmentFilter
     ? eq(visits.departmentId, departmentFilter)
-    : inArray(visits.departmentId, LABOR_DEPARTMENT_IDS);
+    : inArray(visits.departmentId, OFFICIAL_DEPARTMENT_IDS);
   const weekStart = witaParts(new Date(Date.now()-6*86400000)).dateKey;
   const [summaryRows, daily, byService, byType] = await Promise.all([
     db.select({

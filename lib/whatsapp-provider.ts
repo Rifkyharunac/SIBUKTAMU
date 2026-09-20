@@ -17,13 +17,26 @@ export async function deliverWhatsApp(env: WhatsAppEnvironment, recipient: strin
   const phone = recipient.replace(/\D/g, "").replace(/^0/, "62");
   if (!/^[1-9]\d{7,14}$/.test(phone)) throw new Error("Nomor tujuan WhatsApp tidak valid.");
   const base = new URL(provider === "waha" ? env.WAHA_API_URL! : env.WHATSAPP_API_URL || "https://graph.facebook.com/v21.0");
-  if (base.protocol !== "https:" || base.username || base.password || base.search || base.hash) throw new Error("Alamat API harus HTTPS tanpa kredensial, query, atau fragmen.");
+  const isLocal = base.protocol === "http:" && (base.hostname === "localhost" || base.hostname === "127.0.0.1");
+  if ((base.protocol !== "https:" && !isLocal) || base.username || base.password || base.search || base.hash) throw new Error("Alamat API harus HTTPS tanpa kredensial, query, atau fragmen.");
   const root = base.href.replace(/\/$/, "");
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (provider === "waha") headers["X-Api-Key"] = env.WAHA_API_KEY!;
   else headers.Authorization = `Bearer ${env.WHATSAPP_ACCESS_TOKEN}`;
+  if (provider === "waha") {
+    // Resolve the actual session account; never send visitor data back to the bot.
+    const meResponse = await transport(`${root}/api/sessions/${encodeURIComponent(env.WAHA_SESSION?.trim() || "default")}/me`, {
+      headers, redirect: "manual", signal: AbortSignal.timeout(10000),
+    });
+    if (!meResponse.ok) throw new Error("Identitas bot WAHA belum dapat diverifikasi. Periksa sesi dan API key.");
+    let me: { id?: string } | null;
+    try { me = await meResponse.json(); } catch { throw new Error("Respons penyedia tidak valid saat memeriksa sesi WAHA."); }
+    const sender = typeof me?.id === "string" ? me.id.split("@")[0].split(":")[0] : "";
+    if (!/^[1-9]\d{7,14}$/.test(sender)) throw new Error("Sesi WAHA belum terhubung ke nomor bot yang valid.");
+    if (sender === phone) throw new Error("Nomor penerima sama dengan nomor bot. Isi nomor pribadi admin pada menu Pengguna.");
+  }
   const response = await transport(provider === "waha" ? `${root}/api/sendText` : `${root}/${encodeURIComponent(env.WHATSAPP_PHONE_NUMBER_ID!)}/messages`, {
-    method: "POST", headers, redirect: "error", signal: AbortSignal.timeout(15000),
+    method: "POST", headers, redirect: "manual", signal: AbortSignal.timeout(15000),
     body: JSON.stringify(provider === "waha"
       ? { session: env.WAHA_SESSION?.trim() || "default", chatId: `${phone}@c.us`, text: message }
       : { messaging_product: "whatsapp", to: phone, type: "text", text: { preview_url: false, body: message } }),
