@@ -10,13 +10,13 @@ test('ordinary selection is sufficient; Other requires typed purpose; confirmati
  assert.equal(visitPurpose(ordinary,''),'Seksi Penempatan');assert.equal(visitPurpose(other,''),'');
  assert.equal(visitPurpose(other,'  Keperluan lengkap\nBaris kedua  '),'Keperluan lengkap\nBaris kedua');
 });
-test('recipient roles, active state, department and normalized duplicate numbers',()=>{
+test('all active admins across departments receive notifications with normalized duplicate numbers',()=>{
  const user=(role,departmentId,whatsappNumber,isActive=true)=>({role,departmentId,whatsappNumber,isActive});
  assert.deepEqual(notificationRecipients([
  user('SUPER_ADMIN',null,'081234567890'),user('ADMIN_BIDANG','A','+6281234567890'),
  user('ADMIN_BIDANG','A','081234567891'),user('ADMIN_BIDANG','B','081234567892'),
  user('ADMIN_BIDANG','A','081234567893',false),user('VIEWER','A','081234567894'),
- user('SUPER_ADMIN',null,'invalid')],'A'),['6281234567890','6281234567891']);
+ user('SUPER_ADMIN',null,'invalid')],'A'),['6281234567890','6281234567891','6281234567892']);
 });
 test('WAHA must never send to its own session account',async()=>{
  let posts=0;const transport=async(url,options)=>{if(options?.method==='POST')posts++;return Response.json({id:'6281234567890@c.us'});};

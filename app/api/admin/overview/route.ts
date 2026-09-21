@@ -160,7 +160,7 @@ export async function GET(request: Request) {
     departments: auth.identity.role === "SUPER_ADMIN" ? departmentRows : departmentRows.map(row => ({...row,whatsappNumber:null,email:null})),
     services: auth.identity.role === "SUPER_ADMIN" ? serviceRows : serviceRows.map(row => ({...row,whatsappNumber:null})),
     employees: employeeRows,
-    users: auth.identity.role === "SUPER_ADMIN" ? userRows : [],
+    users: auth.identity.role === "SUPER_ADMIN" ? userRows.map(user => ["SUPER_ADMIN", "ADMIN_BIDANG"].includes(user.roleName) ? { ...user, roleId: "role-super", role: "Admin", roleName: "SUPER_ADMIN" } : user) : [],
     notifications: auth.identity.role === "VIEWER" ? [] : notificationRows,
     unreadNotifications: unread?.value || 0,
     notificationConfig: whatsappConfiguration(env as typeof env & WhatsAppEnvironment),

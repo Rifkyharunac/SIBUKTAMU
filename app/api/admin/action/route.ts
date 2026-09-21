@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "SAVE_DEPARTMENT") {
-      if (identity.role !== "SUPER_ADMIN") return Response.json({ error: "Hanya Super Admin yang dapat mengubah bidang." }, { status: 403 });
+      if (identity.role !== "SUPER_ADMIN") return Response.json({ error: "Hanya Admin yang dapat mengubah bidang." }, { status: 403 });
       const id = String(payload.id || crypto.randomUUID());
       const values = {
         code: String(payload.code ?? "").trim().toUpperCase(), name: String(payload.name ?? "").trim(),
@@ -110,7 +110,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "SAVE_SERVICE") {
-      if (identity.role !== "SUPER_ADMIN") return Response.json({ error: "Hanya Super Admin yang dapat mengubah layanan." }, { status: 403 });
+      if (identity.role !== "SUPER_ADMIN") return Response.json({ error: "Hanya Admin yang dapat mengubah layanan." }, { status: 403 });
       const id = String(payload.id || crypto.randomUUID());
       const values = {
         name: String(payload.name ?? "").trim(), category: String(payload.category ?? "Umum").trim(),
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "SAVE_EMPLOYEE") {
-      if (identity.role !== "SUPER_ADMIN") return Response.json({ error: "Hanya Super Admin yang dapat mengubah pegawai." }, { status: 403 });
+      if (identity.role !== "SUPER_ADMIN") return Response.json({ error: "Hanya Admin yang dapat mengubah pegawai." }, { status: 403 });
       const id = String(payload.id || crypto.randomUUID());
       const values = {
         name: String(payload.name ?? "").trim(), position: String(payload.position ?? "").trim(),
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "SAVE_USER") {
-      if (identity.role !== "SUPER_ADMIN") return Response.json({ error: "Hanya Super Admin yang dapat mengubah pengguna." }, { status: 403 });
+      if (identity.role !== "SUPER_ADMIN") return Response.json({ error: "Hanya Admin yang dapat mengubah pengguna." }, { status: 403 });
       const id = String(payload.id || crypto.randomUUID());
       const isNew = !payload.id;
       const username = String(payload.username ?? "").trim().toLowerCase();
@@ -154,13 +154,12 @@ export async function POST(request: Request) {
       }
       const values = {
         name: String(payload.name ?? "").trim(), email: String(payload.email ?? "").trim().toLowerCase(),
-        roleId: String(payload.roleId ?? "role-viewer"), departmentId: String(payload.departmentId ?? "") || null,
+        roleId: payload.roleId === "role-department" ? "role-super" : String(payload.roleId ?? "role-viewer"), departmentId: String(payload.departmentId ?? "") || null,
         whatsappNumber: String(payload.whatsappNumber ?? "").trim() || null, isActive: payload.isActive !== false,
         updatedAt: new Date().toISOString(),
       };
       if (!["role-super","role-front","role-department","role-viewer"].includes(values.roleId)) return Response.json({error:"Peran tidak valid."},{status:422});
-      if (id === identity.id && (!values.isActive || values.roleId !== "role-super" || temporaryPassword)) return Response.json({error:"Gunakan menu Ganti Sandi untuk akun sendiri. Akun sendiri harus tetap aktif sebagai Super Admin."},{status:422});
-      if (values.roleId === "role-department" && !values.departmentId) return Response.json({error:"Admin Bidang wajib memiliki bidang tugas."},{status:422});
+      if (id === identity.id && (!values.isActive || values.roleId !== "role-super" || temporaryPassword)) return Response.json({error:"Gunakan menu Ganti Sandi untuk akun sendiri. Akun sendiri harus tetap aktif sebagai Admin."},{status:422});
       if (!values.name || !values.email.includes("@")) return Response.json({ error: "Nama dan email pengguna wajib diisi." }, { status: 422 });
       await db.insert(users).values({ id, ...values }).onConflictDoUpdate({ target: users.id, set: values });
       const password = temporaryPassword ? await hashPassword(temporaryPassword) : null;
@@ -179,7 +178,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "SAVE_SETTING") {
-      if (identity.role !== "SUPER_ADMIN") return Response.json({ error: "Hanya Super Admin yang dapat mengubah pengaturan." }, { status: 403 });
+      if (identity.role !== "SUPER_ADMIN") return Response.json({ error: "Hanya Admin yang dapat mengubah pengaturan." }, { status: 403 });
       const key = String(payload.key ?? "").trim();
       const value = String(payload.value ?? "").trim();
       if (value.length > 500 || !["office_name","office_address","office_hours","allow_outside_hours","data_retention","report_signer_title","report_signer_name","report_signer_nip"].includes(key)) return Response.json({ error: "Nama pengaturan diperlukan." }, { status: 422 });

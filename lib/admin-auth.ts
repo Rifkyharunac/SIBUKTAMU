@@ -89,7 +89,8 @@ export async function getAdminIdentity(): Promise<AdminIdentity | null> {
       db.update(users).set({ lastSeenAt: now }).where(eq(users.id, identity.id)),
     ]);
   }
-  return identity;
+  // Existing department admins share the same full administrator permissions.
+  return { ...identity, role: identity.role === "ADMIN_BIDANG" ? "SUPER_ADMIN" : identity.role, roleLabel: ["SUPER_ADMIN", "ADMIN_BIDANG"].includes(identity.role) ? "Admin" : identity.roleLabel };
 }
 
 export async function requireAdminApi(
@@ -102,7 +103,7 @@ export async function requireAdminApi(
   if (identity.mustChangePassword) {
     return { error: Response.json({ error: "Ganti sandi sementara sebelum menggunakan dashboard." }, { status: 403 }) } as const;
   }
-  if ((identity.role === "ADMIN_BIDANG" && !identity.departmentId) || !allowed.includes(identity.role)) {
+  if (!allowed.includes(identity.role)) {
     return { error: Response.json({ error: "Anda tidak memiliki kewenangan untuk tindakan ini." }, { status: 403 }) } as const;
   }
   return { identity } as const;

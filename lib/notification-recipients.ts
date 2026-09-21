@@ -5,7 +5,7 @@ export function notificationPhone(value: string | null | undefined): string | nu
   const phone = raw.replace(/\D/g, "").replace(/^0/, "62");
   return /^[1-9]\d{7,14}$/.test(phone) ? phone : null;
 }
-export function notificationRecipients(admins: NotificationAdmin[], departmentId: string) {
-  return [...new Set(admins.filter(user => user.isActive && (user.role === "SUPER_ADMIN" || (user.role === "ADMIN_BIDANG" && user.departmentId === departmentId)))
+export function notificationRecipients(admins: NotificationAdmin[], _departmentId: string) {
+  return [...new Set(admins.filter(user => user.isActive && ["SUPER_ADMIN", "ADMIN_BIDANG"].includes(user.role))
     .map(user => notificationPhone(user.whatsappNumber)).filter((phone): phone is string => Boolean(phone)))];
 }

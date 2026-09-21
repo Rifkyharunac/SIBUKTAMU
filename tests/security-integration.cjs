@@ -92,15 +92,15 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  addAdmin.run('inactive','Inactive','inactive@example.invalid','role-department',directService.departmentId,'081111111115',0);
  const routed=await route('visits').POST(request('visits',{visitorName:'Routing Test',visitorType:'Pribadi / Masyarakat',phone:'081234567877',serviceId:directService.id,signature,consent:true}));
  assert.equal(routed.status,201,await routed.clone().text()); const routedVisit=(await routed.json()).visit;
- assert.deepEqual(sql.prepare('SELECT recipient FROM whatsapp_notification_logs WHERE visit_id=? ORDER BY recipient').all(routedVisit.id).map(r=>r.recipient),['6281111111112','6281111111113']);
+ assert.deepEqual(sql.prepare('SELECT recipient FROM whatsapp_notification_logs WHERE visit_id=? ORDER BY recipient').all(routedVisit.id).map(r=>r.recipient),['6281111111112','6281111111113','6281111111114']);
  const realTransport=global.fetch;Object.assign(env,waEnv);const delivered=[];
  try {
    global.fetch=async(url,init)=>{if(url.endsWith('/me'))return Response.json({id:'628111111111@c.us'});delivered.push(JSON.parse(init.body).chatId);return Response.json({id:'message-'+delivered.length});};
    const {dispatchVisitNotifications}=require(root+'/lib/whatsapp.ts');
    await Promise.all([dispatchVisitNotifications(routedVisit.id),dispatchVisitNotifications(routedVisit.id)]);
-   assert.deepEqual(delivered.sort(),['6281111111112@c.us','6281111111113@c.us']);
+   assert.deepEqual(delivered.sort(),['6281111111112@c.us','6281111111113@c.us','6281111111114@c.us']);
  }finally{global.fetch=realTransport;for(const key of Object.keys(waEnv))delete env[key];}
- console.log('PASS multi-admin routing, inactive/other department exclusion, deduplication and concurrent dispatch');
+ console.log('PASS multi-admin routing, all departments included, inactive exclusion, deduplication and concurrent dispatch');
  res=await route('admin/export').GET(request('admin/export?format=pdf'));assert.equal(res.status,200);assert.ok((await res.arrayBuffer()).byteLength>1000);
  res=await route('admin/export').GET(request('admin/export?format=xlsx'));assert.equal(res.status,200);assert.ok((await res.arrayBuffer()).byteLength>1000);console.log('PASS authenticated PDF and Excel export');
  const row={id:visit.id};
@@ -130,7 +130,10 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  sql.prepare("UPDATE users SET role_id='role-viewer' WHERE id=(SELECT user_id FROM admin_credentials WHERE username='testadmin')").run();
  res=await route('admin/signature').GET(request('admin/signature?key=signatures/test'));assert.equal(res.status,403);
  res=await route('admin/overview').GET(request('admin/overview'));assert.equal(res.status,200);const data=await res.json();assert.equal(data.notifications.length,0);assert.equal(data.visits.length,3);assert.ok(data.visits.every(v=>!v.signaturePath&&v.phone.includes('****')));console.log('PASS viewer restrictions');
- sql.prepare("UPDATE users SET role_id='role-department',department_id=NULL WHERE id=(SELECT user_id FROM admin_credentials WHERE username='testadmin')").run();res=await route('admin/export').GET(request('admin/export'));assert.equal(res.status,403);console.log('PASS missing department fails closed');
+ sql.prepare("UPDATE users SET role_id='role-department',department_id=NULL WHERE id=(SELECT user_id FROM admin_credentials WHERE username='testadmin')").run();res=await route('admin/export').GET(request('admin/export'));assert.equal(res.status,200);
+ res=await route('admin/overview').GET(request('admin/overview'));assert.equal(res.status,200);const unified=await res.json();assert.equal(unified.identity.role,'SUPER_ADMIN');assert.equal(unified.identity.roleLabel,'Admin');assert.equal(unified.visits.length,3);assert.ok(unified.users.length>0);assert.ok(unified.settings.length>0);
+ await adminAction({action:'SAVE_SETTING',key:'office_hours',value:'08.00–16.00'});
+ console.log('PASS legacy department admin has full overview, exports and settings without department assignment');
  const {rateLimit}=require(root+'/lib/rate-limit.ts');for(let i=0;i<3;i++)await rateLimit(request('auth/login'),'test',3,900);res=await rateLimit(request('auth/login'),'test',3,900);assert.equal(res.status,429);console.log('PASS atomic request rate limit');
  const auth=require(root+'/lib/admin-auth.ts');
  const user=sql.prepare("SELECT user_id FROM admin_credentials WHERE username='testadmin'").get().user_id;
