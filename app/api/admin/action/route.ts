@@ -17,6 +17,7 @@ import { requireAdminApi, writeAudit } from "@/lib/admin-auth";
 import { hashPassword, validatePassword } from "@/lib/password";
 import { sendWhatsAppNotification } from "@/lib/whatsapp";
 import { canTransition, isVisitStatus } from "@/lib/visit-rules";
+import { notificationPhone } from "@/lib/notification-recipients";
 
 export async function POST(request: Request) {
   const auth = await requireAdminApi(["SUPER_ADMIN", "FRONT_OFFICE", "ADMIN_BIDANG"]);
@@ -143,6 +144,8 @@ export async function POST(request: Request) {
       const isNew = !payload.id;
       const username = String(payload.username ?? "").trim().toLowerCase();
       const temporaryPassword = String(payload.temporaryPassword ?? "");
+      const whatsappNumber = String(payload.whatsappNumber ?? "").trim();
+      if (whatsappNumber && !notificationPhone(whatsappNumber)) return Response.json({ error: "Nomor WhatsApp tidak valid. Gunakan format 08xxxxxxxxxx atau +628xxxxxxxxxx, atau kosongkan jika tidak menerima notifikasi." }, { status: 422 });
       if (!/^[a-z0-9._-]{3,40}$/.test(username)) return Response.json({ error: "Username harus 3–40 karakter dan hanya memakai huruf kecil, angka, titik, garis bawah, atau tanda hubung." }, { status: 422 });
       const [usernameOwner] = await db.select({ userId: adminCredentials.userId }).from(adminCredentials).where(eq(adminCredentials.username, username)).limit(1);
       if (usernameOwner && usernameOwner.userId !== id) return Response.json({ error: "Username sudah digunakan petugas lain." }, { status: 409 });
@@ -155,7 +158,7 @@ export async function POST(request: Request) {
       const values = {
         name: String(payload.name ?? "").trim(), email: String(payload.email ?? "").trim().toLowerCase(),
         roleId: payload.roleId === "role-department" ? "role-super" : String(payload.roleId ?? "role-viewer"), departmentId: String(payload.departmentId ?? "") || null,
-        whatsappNumber: String(payload.whatsappNumber ?? "").trim() || null, isActive: payload.isActive !== false,
+        whatsappNumber: whatsappNumber ? notificationPhone(whatsappNumber) : null, isActive: payload.isActive !== false,
         updatedAt: new Date().toISOString(),
       };
       if (!["role-super","role-front","role-department","role-viewer"].includes(values.roleId)) return Response.json({error:"Peran tidak valid."},{status:422});

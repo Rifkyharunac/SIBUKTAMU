@@ -203,7 +203,7 @@ export async function POST(request: Request) {
       `Bidang    : ${service.departmentName}`,
       `Masuk  : ${time.time} WITA`,
       "",
-      "Ada tamu yang menunggu pelayanan pada bidang Anda.",
+      "Ada tamu yang menunggu pelayanan pada bidang tujuan di atas.",
     ].join("\n");
     let notificationQueued = false;
     try {
@@ -213,7 +213,7 @@ export async function POST(request: Request) {
       const notifications = (recipients.length ? recipients : [null]).map(recipient => ({
         id: crypto.randomUUID(), visitId: id, recipient, message,
         status: recipient ? "QUEUED" : "NOT_CONFIGURED",
-        errorMessage: recipient ? null : "Belum ada nomor valid pada akun admin bidang tujuan atau super admin aktif. Perbarui menu Pengguna.",
+        errorMessage: recipient ? null : "Belum ada nomor WhatsApp valid pada akun Admin aktif. Perbarui nomor penerima pada menu Pengguna.",
       }));
       await db.batch([
         db.insert(submissionAttempts).values({id:crypto.randomUUID(),ipHash,phoneHash,createdAt:time.timestamp}),

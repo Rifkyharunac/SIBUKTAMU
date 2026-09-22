@@ -5,12 +5,12 @@ Sistem Informasi Buku Tamu Digital Dinas Tenaga Kerja dan Transmigrasi Provinsi 
 ## Fitur utama
 
 - Form tamu tanpa akun dalam tiga tahap, mobile-first, dan ramah lansia.
-- Master tujuan kunjungan untuk lima Kabid, dua UPT Wasnaker, dan Sekretariat Dinas yang dapat diubah Super Admin tanpa mengubah source code.
+- Master tujuan kunjungan untuk lima Kabid, dua UPT Wasnaker, dan Sekretariat Dinas yang dapat diubah Admin tanpa mengubah source code.
 - Auto-routing layanan ke bidang yang bertanggung jawab.
 - Nomor antrean harian dan kode `BT-YYYYMMDD-NNN` yang dibuat atomik oleh database.
 - Tanda tangan HTML Canvas yang disimpan sebagai objek privat.
 - Jam masuk/keluar WITA, durasi otomatis, dan check-out mandiri.
-- Login akun internal dan dashboard berbasis peran: Super Admin, Front Office, Admin Bidang, dan Viewer.
+- Login akun internal dan dashboard berbasis peran: Admin, Front Office, dan Viewer. Akun lama Admin Bidang memiliki tampilan dan akses penuh yang sama dengan Admin. Semua Admin aktif dengan nomor WhatsApp valid menerima notifikasi setiap kunjungan dari seluruh bidang.
 - Alur status, transfer bidang, notifikasi internal dengan status dibaca/arsip/hapus, WhatsApp log/retry/manual fallback, dan audit trail.
 - QR check-in/check-out, poster A4, laporan Excel `.xlsx`, PDF A4 landscape, pencarian, dan filter.
 - Dashboard seluruh tujuan layanan dengan statistik harian, antrean, durasi, tren, layanan teratas, dan profil pengunjung.
@@ -46,7 +46,7 @@ Seluruh migrasi ada di folder `drizzle/` dan harus diterapkan secara berurutan. 
 
 ## Alur akses admin pertama
 
-Administrator masuk melalui `/admin/login` memakai username dan sandi sementara yang disimpan sebagai secret runtime. Pada login pertama, kredensial internal Super Admin dibuat dan sandi wajib diganti sebelum dashboard dapat digunakan. Super Admin kemudian dapat membuat username serta sandi sementara untuk petugas lain melalui menu Pengguna.
+Administrator masuk melalui `/admin/login` memakai username dan sandi sementara yang disimpan sebagai secret runtime. Pada login pertama, kredensial internal Admin dibuat dan sandi wajib diganti sebelum dashboard dapat digunakan. Admin kemudian dapat membuat username serta sandi sementara untuk petugas lain melalui menu Pengguna.
 
 ## Environment
 

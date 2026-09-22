@@ -15,8 +15,8 @@ Isi jabatan, nama, dan NIP pengesahan pada Pengaturan. Tanda tangan tamu tetap t
 ## Pengamanan yang diterapkan
 
 - Username/sandi instansi, hashing PBKDF2 bersalt, perbandingan hash, cookie sesi Secure/HttpOnly/SameSite dengan masa berlaku 12 jam.
-- Sesi lama dicabut saat ganti sandi. Perubahan akun oleh Super Admin mencabut sesi akun tersebut. Admin tidak dapat menonaktifkan atau menurunkan perannya sendiri.
-- Pembatasan peran dan bidang pada API, ekspor, dan citra tanda tangan. Admin Bidang tanpa bidang ditolak.
+- Sesi lama dicabut saat ganti sandi. Perubahan akun oleh Admin mencabut sesi akun tersebut. Admin tidak dapat menonaktifkan atau menurunkan perannya sendiri.
+- Pembatasan peran pada API, ekspor, dan citra tanda tangan tetap berlaku untuk Front Office dan Viewer. Akun lama Admin Bidang memiliki akses penuh yang sama dengan Admin, termasuk tanpa penempatan bidang.
 - Validasi Origin dan Sec-Fetch-Site untuk mutasi, tipe konten JSON, batas ukuran badan permintaan, validasi isian dan format/dimensi PNG.
 - Pembatasan frekuensi login, pendaftaran, penyelesaian kunjungan, perubahan, dan ekspor melalui penghitung D1 atomik berbasis IP.
 - Header CSP, nosniff, no-referrer, pembatasan iframe, HSTS pada HTTPS, serta no-store untuk halaman/data privat. CSP masih mengizinkan inline script/style yang dibutuhkan renderer; bukan perlindungan XSS mutlak.

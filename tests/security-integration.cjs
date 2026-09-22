@@ -134,6 +134,15 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  res=await route('admin/overview').GET(request('admin/overview'));assert.equal(res.status,200);const unified=await res.json();assert.equal(unified.identity.role,'SUPER_ADMIN');assert.equal(unified.identity.roleLabel,'Admin');assert.equal(unified.visits.length,3);assert.ok(unified.users.length>0);assert.ok(unified.settings.length>0);
  await adminAction({action:'SAVE_SETTING',key:'office_hours',value:'08.00–16.00'});
  console.log('PASS legacy department admin has full overview, exports and settings without department assignment');
+ const recipientAccount={action:'SAVE_USER',name:'Notification Admin',email:'notify@example.invalid',username:'notify.admin',temporaryPassword:'TemporaryPassword123',roleId:'role-department',whatsappNumber:'+62 812-3456-7890',isActive:true};
+ res=await route('admin/action').POST(request('admin/action',{...recipientAccount,whatsappNumber:'not-a-phone'}));assert.equal(res.status,422);
+ assert.equal(sql.prepare('SELECT id FROM users WHERE email=?').get(recipientAccount.email),undefined,'invalid phone must not create an account');
+ const savedRecipient=await adminAction(recipientAccount);
+ let storedRecipient=sql.prepare('SELECT role_id,whatsapp_number FROM users WHERE id=?').get(savedRecipient.id);
+ assert.equal(storedRecipient.role_id,'role-super');assert.equal(storedRecipient.whatsapp_number,'6281234567890');
+ await adminAction({...recipientAccount,id:savedRecipient.id,temporaryPassword:'',whatsappNumber:''});
+ storedRecipient=sql.prepare('SELECT whatsapp_number FROM users WHERE id=?').get(savedRecipient.id);assert.equal(storedRecipient.whatsapp_number,null);
+ console.log('PASS legacy admin manages users, rejects invalid recipient numbers, normalizes valid numbers and allows opting out');
  const {rateLimit}=require(root+'/lib/rate-limit.ts');for(let i=0;i<3;i++)await rateLimit(request('auth/login'),'test',3,900);res=await rateLimit(request('auth/login'),'test',3,900);assert.equal(res.status,429);console.log('PASS atomic request rate limit');
  const auth=require(root+'/lib/admin-auth.ts');
  const user=sql.prepare("SELECT user_id FROM admin_credentials WHERE username='testadmin'").get().user_id;

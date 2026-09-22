@@ -1,4 +1,4 @@
-# Revisi pengisian tamu dan notifikasi — 19 September 2026
+# Revisi pengisian tamu dan notifikasi — 22 September 2026
 
 ## Perubahan
 
@@ -6,7 +6,7 @@
 - Pilihan seksi/tujuan bawaan dapat dilanjutkan tanpa keterangan tambahan. Lainnya wajib diisi. Layanan khusus yang sengaja diberi aturan wajib oleh admin tetap mengikuti aturan tersebut.
 - Konfirmasi menampilkan penjelasan yang ditulis tamu; jika kosong pada pilihan biasa, menampilkan nama layanan. Penjelasan tersimpan pada kunjungan dan masuk ke pesan WhatsApp.
 - Struktur kantor versi 17 September dipertahankan. Migrasi terbaru: `0008_department_other_choices.sql`. Riwayat kunjungan tidak dihapus.
-- Notifikasi dikirim ke nomor akun semua Admin Bidang aktif sesuai bidang tujuan, serta semua Super Admin aktif. Nomor yang sama dinormalisasi dan hanya mendapat satu pesan per kunjungan.
+- Notifikasi dikirim ke nomor akun semua Admin aktif dari seluruh bidang, termasuk akun lama Admin Bidang dan Super Admin. Nomor yang sama dinormalisasi dan hanya mendapat satu pesan per kunjungan.
 - Kontak pada master bidang/layanan dan DEFAULT_ADMIN_WHATSAPP tidak lagi menentukan penerima. Isi nomor penerima pada menu Pengguna.
 - Nomor bot diperiksa dari sesi WAHA sebelum pengiriman. Jika sama dengan penerima, pengiriman ditolak dengan penjelasan di riwayat; admin lain tetap diproses.
 - Pengiriman paralel ke log yang sama dicegah dengan klaim database. Status Diterima Penyedia berarti API menerima pesan, bukan bukti pesan sudah dibaca.
@@ -39,16 +39,16 @@ WAHA_SESSION=default
 
 Sesuaikan URL/port dengan WAHA Anda. HTTP hanya diizinkan untuk localhost/127.0.0.1. Aplikasi yang dihosting membutuhkan URL HTTPS WAHA yang bisa dijangkau server; localhost server hosting bukan laptop Anda.
 
-Masuk sebagai Super Admin → Pengguna. Pada setiap akun Admin Bidang, tetapkan bidang yang benar, aktifkan akun, dan isi nomor WhatsApp admin penerima. Pada akun Super Admin, isi nomor penerima dan aktifkan akun. Nomor akun bot yang dipasangkan ke WAHA tidak boleh dipakai sebagai nomor penerima.
+Masuk sebagai Admin → Pengguna. Pilih peran Admin, aktifkan akun, dan isi nomor WhatsApp setiap admin penerima. Akun lama Admin Bidang otomatis memiliki tampilan dan akses penuh yang sama dengan Super Admin; bidang petugas tidak membatasi akses atau notifikasi. Nomor boleh dikosongkan jika akun tidak perlu menerima WhatsApp. Nomor akun bot yang dipasangkan ke WAHA tidak boleh dipakai sebagai nomor penerima.
 
-Coba satu kunjungan baru ke bidang yang sudah diatur. Periksa riwayat notifikasi: setiap nomor penerima unik mempunyai log sendiri. Admin bidang lain tidak menerima pesan kunjungan tersebut. Jika tidak ada penerima valid, log menunjukkan Belum Dikonfigurasi. Setelah memperbaiki akun, uji dengan kunjungan baru; tujuan pada log lama tidak otomatis berubah.
+Coba satu kunjungan baru ke bidang yang sudah diatur. Periksa riwayat notifikasi: setiap nomor penerima unik mempunyai log sendiri. Admin dari bidang lain juga menerima pesan kunjungan tersebut. Jika tidak ada penerima valid, log menunjukkan Belum Dikonfigurasi. Setelah memperbaiki akun, uji dengan kunjungan baru; tujuan pada log lama tidak otomatis berubah.
 
 Kegagalan WhatsApp tidak membatalkan kunjungan yang sudah tersimpan. Sebelum mengirim ulang pesan gagal karena timeout, periksa riwayat WAHA untuk menghindari pengiriman ganda. Status Sedang dikirim yang menetap setelah server terhenti perlu diperiksa operator pada riwayat WAHA sebelum dipulihkan.
 
 ## Verifikasi dan batas pengujian
 
 Pengujian otomatis mencakup pilihan biasa/Lainnya, penyimpanan penjelasan, penerima beberapa admin, normalisasi/deduplikasi nomor, penolakan kirim ke bot sendiri, pengiriman serentak, login/logout, batas akses, checkout, ekspor PDF/Excel, serta pengelolaan notifikasi.
-Pengiriman WAHA diuji memakai respons simulasi, bukan mengirim pesan nyata ke akun Anda. Lakukan uji penerimaan di laptop dengan sesi WAHA aktif sebelum dipakai operasional. Versi ini belum dipublikasikan ke situs atau GitHub.
+Pengiriman WAHA diuji memakai respons simulasi, bukan mengirim pesan nyata ke akun Anda. Lakukan uji penerimaan di laptop dengan sesi WAHA aktif sebelum dipakai operasional. Perubahan lokal ini perlu diterapkan ke server sebelum tersedia pada situs operasional.
 
 Referensi endpoint identitas sesi: https://waha.devlike.pro/docs/how-to/sessions/#get-me
 
