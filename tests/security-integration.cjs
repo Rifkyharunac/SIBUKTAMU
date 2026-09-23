@@ -101,8 +101,21 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
    assert.deepEqual(delivered.sort(),['6281111111112@c.us','6281111111113@c.us','6281111111114@c.us']);
  }finally{global.fetch=realTransport;for(const key of Object.keys(waEnv))delete env[key];}
  console.log('PASS multi-admin routing, all departments included, inactive exclusion, deduplication and concurrent dispatch');
- res=await route('admin/export').GET(request('admin/export?format=pdf'));assert.equal(res.status,200);assert.ok((await res.arrayBuffer()).byteLength>1000);
- res=await route('admin/export').GET(request('admin/export?format=xlsx'));assert.equal(res.status,200);assert.ok((await res.arrayBuffer()).byteLength>1000);console.log('PASS authenticated PDF and Excel export');
+ const ExcelJS=require('exceljs/dist/exceljs.min.js');
+ const {PDFDocument,PDFName}=require('pdf-lib');
+ const exportBook=async()=>{const response=await route('admin/export').GET(request('admin/export?format=xlsx'));assert.equal(response.status,200,await response.clone().text());const bytes=await response.arrayBuffer();const book=new ExcelJS.Workbook();await book.xlsx.load(bytes);return {book,bytes};};
+ res=await route('admin/export').GET(request('admin/export?format=pdf'));assert.equal(res.status,200);const pdfBytes=new Uint8Array(await res.arrayBuffer());
+ const pdf=await PDFDocument.load(pdfBytes);assert.ok(pdf.getPages().some(p=>p.node.Resources().lookup(PDFName.of('XObject')).keys().length>=2),'PDF includes guest signatures in addition to the logo');
+ const {book,bytes:excelBytes}=await exportBook();
+ for(const sheet of book.worksheets)assert.ok(sheet.views.every(v=>v.state==='normal'),'all worksheets scroll without frozen panes');
+ const main=book.getWorksheet('Buku Tamu');assert.equal(main.getCell('J10').value,'Tanda tangan');assert.equal(main.getImages().length,4,'logo plus three guest signatures');
+ assert.deepEqual(main.getImages().slice(1).map(i=>i.range.tl.nativeRow),[10,11,12]);
+ if(process.env.REPORT_TEST_OUTPUT){fs.mkdirSync(process.env.REPORT_TEST_OUTPUT,{recursive:true});fs.writeFileSync(process.env.REPORT_TEST_OUTPUT+'/report.pdf',pdfBytes);fs.writeFileSync(process.env.REPORT_TEST_OUTPUT+'/report.xlsx',Buffer.from(excelBytes));}
+ const key=objects.keys().next().value,saved=objects.get(key);
+ objects.delete(key);let unavailable=await exportBook();assert.ok(unavailable.book.getWorksheet('Buku Tamu').getColumn(10).values.includes('Berkas tidak tersedia'));
+ objects.set(key,new Uint8Array([1,2,3]));unavailable=await exportBook();assert.ok(unavailable.book.getWorksheet('Buku Tamu').getColumn(10).values.includes('Berkas tidak terbaca'));objects.set(key,saved);
+ const bucketGet=env.BUCKET.get;env.BUCKET.get=async()=>{throw new Error('storage unavailable');};res=await route('admin/export').GET(request('admin/export'));assert.equal(res.status,503);env.BUCKET.get=bucketGet;
+ console.log('PASS report scrolling, embedded signatures, row alignment, missing/corrupt signature labels and storage failure');
  const row={id:visit.id};
  for(let i=0;i<125;i++) sql.prepare("INSERT INTO whatsapp_notification_logs (id,visit_id,message,status) VALUES (?,?,?,'NOT_CONFIGURED')").run('notice-'+i,row.id,'Local test');
  res=await route('admin/action').POST(request('admin/action',{action:'MARK_ALL_NOTIFICATIONS_READ'}));assert.equal(res.status,200,await res.clone().text());assert.equal(sql.prepare('SELECT COUNT(*) n FROM whatsapp_notification_logs WHERE is_read=0').get().n,0);console.log('PASS marking more than 100 notifications read');
@@ -129,6 +142,7 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  console.log('PASS master data updates, inactive catalog, settings, terminal status, survey and notification archive/delete');
  sql.prepare("UPDATE users SET role_id='role-viewer' WHERE id=(SELECT user_id FROM admin_credentials WHERE username='testadmin')").run();
  res=await route('admin/signature').GET(request('admin/signature?key=signatures/test'));assert.equal(res.status,403);
+ const viewerBook=await exportBook();assert.equal(viewerBook.book.getWorksheet('Buku Tamu').getImages().length,1);assert.ok(viewerBook.book.getWorksheet('Buku Tamu').getColumn(10).values.includes('Akses tanda tangan dibatasi'));
  res=await route('admin/overview').GET(request('admin/overview'));assert.equal(res.status,200);const data=await res.json();assert.equal(data.notifications.length,0);assert.equal(data.visits.length,3);assert.ok(data.visits.every(v=>!v.signaturePath&&v.phone.includes('****')));console.log('PASS viewer restrictions');
  sql.prepare("UPDATE users SET role_id='role-department',department_id=NULL WHERE id=(SELECT user_id FROM admin_credentials WHERE username='testadmin')").run();res=await route('admin/export').GET(request('admin/export'));assert.equal(res.status,200);
  res=await route('admin/overview').GET(request('admin/overview'));assert.equal(res.status,200);const unified=await res.json();assert.equal(unified.identity.role,'SUPER_ADMIN');assert.equal(unified.identity.roleLabel,'Admin');assert.equal(unified.visits.length,3);assert.ok(unified.users.length>0);assert.ok(unified.settings.length>0);
