@@ -9,7 +9,7 @@ Sistem Informasi Buku Tamu Digital Dinas Tenaga Kerja dan Transmigrasi Provinsi 
 - Auto-routing layanan ke bidang yang bertanggung jawab.
 - Nomor antrean harian dan kode `BT-YYYYMMDD-NNN` yang dibuat atomik oleh database.
 - Tanda tangan HTML Canvas yang disimpan sebagai objek privat.
-- Jam masuk/keluar WITA, durasi otomatis, dan check-out mandiri.
+- Jam masuk/keluar WITA dan durasi otomatis. Menu Selesaikan layanan menampilkan nama tamu yang belum selesai, dapat dicari, dan tidak memerlukan input nomor antrean. Konfirmasi diperlukan sebelum selesai; nama langsung hilang dari daftar aktif. Nomor antrean tetap menjadi referensi.
 - Login akun internal dan dashboard berbasis peran: Admin, Front Office, dan Viewer. Akun lama Admin Bidang memiliki tampilan dan akses penuh yang sama dengan Admin. Semua Admin aktif dengan nomor WhatsApp valid menerima notifikasi setiap kunjungan dari seluruh bidang.
 - Alur status, transfer bidang, notifikasi internal dengan status dibaca/arsip/hapus, WhatsApp log/retry/manual fallback, dan audit trail.
 - QR check-in/check-out, poster A4, laporan Excel `.xlsx`, PDF A4 landscape, pencarian, dan filter.
@@ -63,7 +63,7 @@ INITIAL_ADMIN_EMAIL=
 INITIAL_ADMIN_NAME=
 ```
 
-`DEFAULT_ADMIN_WHATSAPP` menjadi nomor penerima awal untuk bidang layanan tenaga kerja yang belum memiliki nomor khusus. Jika konfigurasi WhatsApp Business API belum lengkap, kunjungan dan notifikasi internal tetap tersimpan. Dashboard menyediakan pengiriman manual melalui WhatsApp, sedangkan pengiriman otomatis baru aktif setelah `WHATSAPP_ACCESS_TOKEN` dan `WHATSAPP_PHONE_NUMBER_ID` tersedia.
+Nomor penerima notifikasi diatur pada akun Admin aktif di menu Pengguna, bukan nomor bot. Semua Admin aktif dengan nomor valid menerima notifikasi dari seluruh bidang; nomor yang sama dikirim sekali. Untuk WAHA gunakan `WHATSAPP_PROVIDER=waha`, `WAHA_API_URL`, `WAHA_SESSION`, dan secret `WAHA_API_KEY`. `DEFAULT_ADMIN_WHATSAPP` hanya untuk penyiapan awal akun. Jika provider belum tersedia, data kunjungan tetap tersimpan dan kegagalan dapat dilihat di Notifikasi.
 
 ## Halaman
 

@@ -143,6 +143,43 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  await adminAction({...recipientAccount,id:savedRecipient.id,temporaryPassword:'',whatsappNumber:''});
  storedRecipient=sql.prepare('SELECT whatsapp_number FROM users WHERE id=?').get(savedRecipient.id);assert.equal(storedRecipient.whatsapp_number,null);
  console.log('PASS legacy admin manages users, rejects invalid recipient numbers, normalizes valid numbers and allows opting out');
+ // Public name checkout: bounded data, active-only listing, accurate completion and survey receipt.
+ const directory=route('checkout/active');
+ res=await directory.GET(request('checkout/active'));assert.equal(res.status,200,await res.clone().text());
+ let listing=await res.json();assert.equal(listing.total,2);
+ assert.ok(listing.visits.every(v=>Object.keys(v).sort().join(',')==='checkInAt,id,name,queueNumber,visitCode'));
+ assert.ok(!listing.visits.some(v=>v.id===visit.id),'completed visit is hidden');
+ res=await directory.GET(request('checkout/active?search=Routing'));assert.equal((await res.json()).total,1);
+ res=await directory.GET(request('checkout/active?search=%25'));assert.equal((await res.json()).total,0,'wildcards treated literally');
+ res=await directory.POST(request('checkout/active',{visitId:'invalid'}));assert.equal(res.status,422);
+ const activeId=routedVisit.id;
+ sql.prepare("UPDATE visits SET status='BATAL' WHERE id=?").run(activeId);
+ res=await directory.POST(request('checkout/active',{visitId:activeId}));assert.equal(res.status,409);
+ res=await directory.GET(request('checkout/active'));assert.equal((await res.json()).total,1);
+ for(const status of ['BARU','MENUNGGU','DITERIMA','SEDANG_DILAYANI','DIALIHKAN']) {
+   sql.prepare('UPDATE visits SET status=? WHERE id=?').run(status,activeId);
+   res=await directory.GET(request('checkout/active?search=Routing'));assert.equal((await res.json()).total,1,status+' must remain available');
+ }
+ // Force a failure in the second batch statement: the preceding log must roll back.
+ const rawAll=Statement.prototype.all;
+ const logCount=()=>sql.prepare("SELECT COUNT(*) n FROM visit_status_logs WHERE visit_id=? AND to_status='SELESAI'").get(activeId).n;
+ const logsBefore=logCount();
+ try {
+   Statement.prototype.all=async function(){if(this.query.startsWith("UPDATE visits SET status='SELESAI'"))throw new Error('simulated database failure');return rawAll.call(this);};
+   res=await directory.POST(request('checkout/active',{visitId:activeId}));assert.equal(res.status,503);
+ } finally {Statement.prototype.all=rawAll;}
+ assert.equal(logCount(),logsBefore);assert.equal(sql.prepare('SELECT check_out_at FROM visits WHERE id=?').get(activeId).check_out_at,null);
+ res=await directory.POST(request('checkout/active',{visitId:activeId}));assert.equal(res.status,200,await res.clone().text());const receipt=await res.json();
+ assert.equal(receipt.success,true);assert.equal(receipt.surveyToken.length,64);assert.ok(!('checkoutTokenHash' in receipt));
+ const ended=sql.prepare('SELECT status,check_out_at,duration_minutes FROM visits WHERE id=?').get(activeId);assert.equal(ended.status,'SELESAI');assert.ok(ended.check_out_at);assert.ok(ended.duration_minutes>=0);
+ res=await directory.POST(request('checkout/active',{visitId:activeId}));assert.equal(res.status,409);assert.equal(logCount(),logsBefore+1);
+ assert.equal(sql.prepare('SELECT check_out_at FROM visits WHERE id=?').get(activeId).check_out_at,ended.check_out_at);
+ res=await directory.GET(request('checkout/active?search=Routing'));assert.equal((await res.json()).total,0);
+ res=await route('checkout').POST(request('checkout',{visitCode:receipt.visitCode,surveyToken:receipt.surveyToken}));assert.equal(res.status,403,'survey receipt cannot authorize checkout or private status');
+ res=await route('checkout').POST(request('checkout',{visitCode:receipt.visitCode,surveyToken:receipt.surveyToken,rating:4,feedback:'Baik'}));assert.equal(res.status,200);
+ res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,surveyToken:receipt.surveyToken,rating:4}));assert.equal(res.status,403,'receipt bound to one visit');
+ res=await route('admin/overview').GET(request('admin/overview'));assert.equal((await res.json()).visits.find(v=>v.id===activeId).status,'SELESAI');
+ console.log('PASS public checkout privacy, search, active statuses, cancellation, transactional rollback, repeat completion, dashboard and survey');
  const {rateLimit}=require(root+'/lib/rate-limit.ts');for(let i=0;i<3;i++)await rateLimit(request('auth/login'),'test',3,900);res=await rateLimit(request('auth/login'),'test',3,900);assert.equal(res.status,429);console.log('PASS atomic request rate limit');
  const auth=require(root+'/lib/admin-auth.ts');
  const user=sql.prepare("SELECT user_id FROM admin_credentials WHERE username='testadmin'").get().user_id;

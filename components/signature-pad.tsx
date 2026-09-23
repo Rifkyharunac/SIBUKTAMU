@@ -106,7 +106,7 @@ export function SignaturePad({ onChange }: { onChange: (value: string | null) =>
 
   return (
     <div>
-      <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-white focus-within:border-[#087f5b] focus-within:ring-4 focus-within:ring-emerald-100">
+      <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-white focus-within:border-[#0369a1] focus-within:ring-4 focus-within:ring-sky-100">
         <canvas
           ref={canvasRef}
           className="h-44 w-full cursor-crosshair touch-none"

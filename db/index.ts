@@ -11,3 +11,6 @@ export function getDb() {
 
   return drizzle(env.DB, { schema });
 }
+
+/** Raw prepared statements for transactional public checkout. */
+export function getD1() { return env.DB; }

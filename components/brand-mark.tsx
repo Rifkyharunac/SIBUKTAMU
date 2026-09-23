@@ -7,7 +7,7 @@ export function BrandMark({ compact = false, inverse = false }: { compact?: bool
         <img src="/logo-sulteng-small.png" width="44" height="44" className="size-11 object-contain" alt="Lambang Provinsi Sulawesi Tengah" />
       </div>
       <div className="min-w-0">
-        <p className={`text-[10px] font-extrabold uppercase leading-3 tracking-[0.16em] ${inverse ? "text-emerald-200" : "text-[#087f5b]"}`}>
+        <p className={`text-[10px] font-extrabold uppercase leading-3 tracking-[0.16em] ${inverse ? "text-sky-200" : "text-[#0369a1]"}`}>
           Pemerintah Provinsi Sulawesi Tengah
         </p>
         <p className={`${compact ? "mt-1 text-xs font-extrabold leading-4" : "text-sm font-bold leading-tight"} ${inverse ? "text-white" : "text-slate-900"}`}>

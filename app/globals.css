@@ -19,13 +19,13 @@
 }
 
 :root {
-  --background: #f4f8f7;
+  --background: #f0f9ff;
   --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #171717;
   --popover: #ffffff;
   --popover-foreground: #171717;
-  --primary: #087f5b;
+  --primary: #0369a1;
   --primary-foreground: #fafafa;
   --secondary: #f5f5f5;
   --secondary-foreground: #171717;
@@ -36,10 +36,10 @@
   --destructive: #e7000b;
   --border: #e5e5e5;
   --input: #e5e5e5;
-  --ring: #10b981;
+  --ring: #0ea5e9;
   --chart-1: #f54900;
-  --chart-2: #009689;
-  --chart-3: #104e64;
+  --chart-2: #0284c7;
+  --chart-3: #075985;
   --chart-4: #ffb900;
   --chart-5: #fe9a00;
   --radius: 0.75rem;
@@ -112,7 +112,7 @@ textarea {
 .admin-editor input,
 .admin-editor select,
 .admin-editor textarea {
-  border-color: #d7e1dd;
+  border-color: #cbdfea;
   background-color: #fff;
 }
 
@@ -124,8 +124,8 @@ textarea {
 .admin-editor input:focus-visible,
 .admin-editor select:focus-visible,
 .admin-editor textarea:focus-visible {
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgb(16 185 129 / 10%);
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgb(14 165 233 / 10%);
 }
 
 .admin-panel table th,
@@ -142,7 +142,7 @@ textarea {
 
 .hero-3d-shell {
   isolation: isolate;
-  background: #043d31;
+  background: #075985;
 }
 
 .hero-building-photo {
@@ -162,9 +162,9 @@ textarea {
 .hero-building-overlay {
   z-index: 1;
   background:
-    radial-gradient(circle at 78% 32%, rgb(16 185 129 / 18%), transparent 30%),
-    linear-gradient(90deg, rgb(2 44 35 / 96%) 0%, rgb(3 63 49 / 88%) 42%, rgb(3 48 40 / 60%) 100%),
-    linear-gradient(180deg, rgb(2 44 35 / 14%), rgb(2 44 35 / 50%));
+    radial-gradient(circle at 78% 32%, rgb(14 165 233 / 18%), transparent 30%),
+    linear-gradient(90deg, rgb(3 105 161 / 96%) 0%, rgb(2 132 199 / 88%) 42%, rgb(7 89 133 / 60%) 100%),
+    linear-gradient(180deg, rgb(3 105 161 / 14%), rgb(3 105 161 / 50%));
 }
 
 .hero-3d-grid {
@@ -185,10 +185,10 @@ textarea {
 .hero-3d-orbit {
   position: absolute;
   inset: 5% 4% 6% 2%;
-  border: 1px solid rgb(5 150 105 / 18%);
+  border: 1px solid rgb(2 132 199 / 18%);
   border-radius: 50%;
   transform: rotate(-12deg);
-  box-shadow: 0 0 90px rgb(16 185 129 / 12%);
+  box-shadow: 0 0 90px rgb(14 165 233 / 12%);
 }
 
 .hero-3d-orbit::before,
@@ -196,8 +196,8 @@ textarea {
   content: "";
   position: absolute;
   border-radius: 999px;
-  background: #10b981;
-  box-shadow: 0 0 24px rgb(16 185 129 / 55%);
+  background: #0ea5e9;
+  box-shadow: 0 0 24px rgb(14 165 233 / 55%);
 }
 
 .hero-3d-orbit::before {
@@ -230,11 +230,11 @@ textarea {
   border: 1px solid rgb(255 255 255 / 22%);
   border-radius: 28px;
   background:
-    radial-gradient(circle at 92% 4%, rgb(52 211 153 / 30%), transparent 28%),
-    linear-gradient(145deg, #075f47 0%, #043d31 76%);
+    radial-gradient(circle at 92% 4%, rgb(56 189 248 / 30%), transparent 28%),
+    linear-gradient(145deg, #0284c7 0%, #075985 76%);
   box-shadow:
     0 54px 100px rgb(0 0 0 / 42%),
-    26px 24px 0 rgb(16 185 129 / 12%),
+    26px 24px 0 rgb(14 165 233 / 12%),
     -1px -1px 0 rgb(255 255 255 / 20%);
   transform: translateZ(34px);
 }
@@ -265,7 +265,7 @@ textarea {
 
 .public-site-shell {
   background-image:
-    linear-gradient(rgb(244 248 247 / 94%), rgb(244 248 247 / 97%)),
+    linear-gradient(rgb(240 249 255 / 94%), rgb(240 249 255 / 97%)),
     url("/gedung-disnakertrans-sulteng.webp");
   background-position: center top;
   background-size: cover;
@@ -282,7 +282,7 @@ textarea {
 }
 
 .guest-progress {
-  filter: drop-shadow(0 10px 24px rgb(4 61 49 / 9%));
+  filter: drop-shadow(0 10px 24px rgb(7 89 133 / 9%));
 }
 
 .guest-form-card {
@@ -296,7 +296,7 @@ textarea {
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  box-shadow: 18px 20px 0 rgb(8 127 91 / 7%);
+  box-shadow: 18px 20px 0 rgb(3 105 161 / 7%);
 }
 
 .service-choice {
@@ -311,7 +311,7 @@ textarea {
 .visit-code-panel {
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 85%),
-    0 14px 34px rgb(8 127 91 / 10%);
+    0 14px 34px rgb(3 105 161 / 10%);
 }
 
 .success-orb {
@@ -354,8 +354,8 @@ textarea {
   left: -8%;
   min-width: 150px;
   display: block;
-  border-color: rgb(52 211 153 / 38%);
-  background: linear-gradient(145deg, rgb(6 95 70 / 96%), rgb(4 61 49 / 96%));
+  border-color: rgb(56 189 248 / 38%);
+  background: linear-gradient(145deg, rgb(3 105 161 / 96%), rgb(7 89 133 / 96%));
   transform: translateZ(110px) rotate(-3deg);
   animation: hero-float 5.8s ease-in-out 0.2s infinite;
 }
@@ -373,7 +373,7 @@ textarea {
 @media (max-width: 720px) {
   .hero-building-overlay {
     background:
-      linear-gradient(180deg, rgb(2 44 35 / 94%) 0%, rgb(3 63 49 / 88%) 44%, rgb(3 48 40 / 70%) 100%);
+      linear-gradient(180deg, rgb(3 105 161 / 94%) 0%, rgb(2 132 199 / 88%) 44%, rgb(7 89 133 / 70%) 100%);
   }
 
   .hero-photo-credit {
@@ -456,9 +456,9 @@ textarea {
 }
 
 /* Consistent depth and keyboard focus across the administration workspace. */
-.admin-panel { border-radius: 1.25rem; box-shadow: 0 2px 0 #dce7e2, 0 14px 40px rgb(6 61 47 / 5%); }
+.admin-panel { border-radius: 1.25rem; box-shadow: 0 2px 0 #dbeafe, 0 14px 40px rgb(7 89 133 / 5%); }
 .admin-panel h2 { line-height: 1.4; }
-.admin-panel table thead { background: #f1f6f3; }
-.admin-panel table tbody tr:hover { background: #f6faf8; }
+.admin-panel table thead { background: #f0f9ff; }
+.admin-panel table tbody tr:hover { background: #f8fcff; }
 button:focus-visible, a:focus-visible { outline: 3px solid #d6a641; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }

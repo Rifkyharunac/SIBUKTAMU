@@ -50,6 +50,7 @@ const worker = {
         let budget: [string, number, number] | null = null;
         if (url.pathname === "/api/auth/login") budget = ["login", 20, 900];
         else if (url.pathname === "/api/visits") budget = ["register", 60, 300];
+        else if (url.pathname === "/api/checkout/active") budget = request.method === "GET" ? ["checkout-list", 600, 300] : ["checkout-list-complete", 120, 300];
         else if (url.pathname === "/api/checkout") budget = ["checkout", 60, 900];
         else if (url.pathname === "/api/auth/change-password") budget = ["password", 10, 900];
         else if (url.pathname === "/api/admin/export") budget = ["export", 10, 300];
