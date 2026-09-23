@@ -66,6 +66,7 @@ export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_
   const [catalog, setCatalog] = useState<{ departments: Department[]; services: Service[] }>({ departments: [], services: [] });
   const [catalogError, setCatalogError] = useState("");
   const [search, setSearch] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [duplicateWarning, setDuplicateWarning] = useState(false);
@@ -101,10 +102,17 @@ export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_
       return `${service.name} ${service.category} ${department?.name ?? ""} ${department?.code ?? ""}`.toLowerCase().includes(term);
     }) : catalog.services;
   }, [catalog.departments, catalog.services, search]);
-  const servicesByDepartment = useMemo(() => catalog.departments.map((department) => ({
-    department,
-    services: visibleServices.filter((service) => service.departmentId === department.id),
-  })).filter((group) => group.services.length > 0), [catalog.departments, visibleServices]);
+  const pinnedDepartments = ["dept-sekretariat", "dept-penerima-tamu"];
+  const filterDepartments = catalog.departments.filter(department => !pinnedDepartments.includes(department.id));
+  const servicesByDepartment = useMemo(() => {
+    const main = catalog.departments.filter(department => department.id === departmentFilter && !["dept-sekretariat", "dept-penerima-tamu"].includes(department.id));
+    const pinned = ["dept-sekretariat", "dept-penerima-tamu"].flatMap(id => catalog.departments.filter(department => department.id === id));
+    return [...main, ...pinned].map(department => ({department, services: (["dept-sekretariat", "dept-penerima-tamu"].includes(department.id) ? catalog.services : visibleServices).filter(service => service.departmentId === department.id)})).filter(group => group.services.length > 0);
+  }, [catalog.departments, catalog.services, visibleServices, departmentFilter]);
+  function changeDepartment(id: string) {
+    setDepartmentFilter(id);setSearch("");setError("");setDuplicateWarning(false);
+    setForm(current => ({...current, serviceId:"", purpose:"", employeeName:""}));
+  }
   const displayedPurpose = visitPurpose(selectedService, form.purpose);
 
   function patch<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
@@ -246,11 +254,19 @@ export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_
 
           {step === 2 && (
             <div>
-              <p className="mb-5 text-sm leading-6 text-slate-600">Pilih bidang, UPT, atau Sekretariat, kemudian pilih seksi, subbagian, atau pejabat yang ingin ditemui. Susunan mengikuti papan struktur organisasi di kantor.</p>
-              <div className="relative mb-5">
-                <Search className="pointer-events-none absolute left-4 top-3.5 size-5 text-slate-400" />
-                <Input className="h-12 rounded-xl pl-11" placeholder="Cari bidang atau layanan" value={search} onChange={(event) => setSearch(event.target.value)} />
+              <p className="mb-5 text-sm leading-6 text-slate-600">Pilih bidang untuk melihat tujuan layanannya. Sekretariat Dinas dan Penerima Tamu selalu tersedia di bawah.</p>
+              <div className="mb-5 [&_[data-slot=native-select-wrapper]]:w-full">
+                <label htmlFor="department-filter" className="mb-2 block text-sm font-bold">Pilih bidang / UPT</label>
+                <NativeSelect id="department-filter" className="h-12 w-full rounded-xl bg-white" value={departmentFilter} onChange={event => changeDepartment(event.target.value)} disabled={!catalog.departments.length}>
+                  <NativeSelectOption value="">Pilih bidang yang ingin dituju</NativeSelectOption>
+                  {filterDepartments.map(department => <NativeSelectOption key={department.id} value={department.id}>{department.code} — {department.name}</NativeSelectOption>)}
+                </NativeSelect>
               </div>
+              {departmentFilter && <div className="relative mb-5">
+                <Search className="pointer-events-none absolute left-4 top-3.5 size-5 text-slate-400" />
+                <Input aria-label="Cari tujuan di bidang terpilih" className="h-12 rounded-xl pl-11" placeholder="Cari tujuan di bidang ini" value={search} onChange={event => setSearch(event.target.value)} />
+              </div>}
+              {departmentFilter && !visibleServices.some(service => service.departmentId === departmentFilter) && <p role="status" className="mb-5 rounded-xl bg-sky-50 p-4 text-sm text-slate-600">Tujuan tidak ditemukan pada bidang ini. Ubah kata pencarian.</p>}
               {catalogError && <ErrorBox>{catalogError}</ErrorBox>}
               {!catalogError && catalog.services.length === 0 && <div className="py-16 text-center text-sm text-slate-500"><LoaderCircle className="mx-auto mb-3 size-6 animate-spin text-[#0369a1]" />Memuat layanan…</div>}
               <div className="grid gap-3 sm:grid-cols-2">
@@ -282,7 +298,7 @@ export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_
                     </div>
                   );
                 })}
-                {visibleServices.length === 0 && <p className="rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500 sm:col-span-2">Layanan tidak ditemukan. Pilih “Lainnya” atau ubah kata pencarian.</p>}
+
               </div>
               {selectedService && (
                 <div className="mt-5 rounded-xl border border-sky-200 bg-sky-50 p-4">

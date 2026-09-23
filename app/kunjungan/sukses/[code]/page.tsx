@@ -15,6 +15,7 @@ import {
   Printer,
   ShieldCheck,
 } from "lucide-react";
+import { ServiceReview } from "@/components/service-review";
 import { PublicShell } from "@/components/public-shell";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api-client";
@@ -108,6 +109,7 @@ export default function VisitSuccessPage() {
                     ? <>Durasi kunjungan tercatat sekitar <strong>{completed.durationMinutes} menit</strong>.</>
                     : "Data kunjungan telah diperbarui."}
               </p>
+              {(token || phone) && <ServiceReview key={code} visitCode={code} token={token} phone={phone} />}
               {!kiosk && <Button asChild className="mt-7 h-12 rounded-xl bg-[#0369a1] px-7 text-base hover:bg-[#075985]"><Link href="/">Kembali ke beranda</Link></Button>}
               {kiosk && <Button asChild className="mt-7 h-12 rounded-xl bg-[#0369a1] px-7 text-base hover:bg-[#075985]"><Link href="/kiosk">Siapkan untuk tamu berikutnya</Link></Button>}
             </div>

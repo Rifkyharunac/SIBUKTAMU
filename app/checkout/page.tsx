@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CheckCircle2, LoaderCircle, LogOut, RefreshCw, Search, Users } from "lucide-react";
 import { PublicShell } from "@/components/public-shell";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { ServiceReview } from "@/components/service-review";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { apiRequest } from "@/lib/api-client";
@@ -26,9 +26,6 @@ export default function CheckoutPage() {
   const [selected, setSelected] = useState<Guest | null>(null);
   const [completed, setCompleted] = useState("");
   const [receipt, setReceipt] = useState<{visitCode:string;surveyToken?:string} | null>(null);
-  const [rating, setRating] = useState(0);
-  const [feedback, setFeedback] = useState("");
-  const [surveySent, setSurveySent] = useState(false);
   const requestId = useRef(0);
   const sending = useRef(false);
 
@@ -60,7 +57,7 @@ export default function CheckoutPage() {
       const result = await apiRequest<{success:boolean;visitCode:string;surveyToken?:string}>("/api/checkout/active", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visitId:selected.id})});
       if (!result.success) throw new Error("Status belum dikonfirmasi. Silakan muat ulang daftar.");
       clearActiveVisit(result.visitCode);
-      setCompleted(selected.name);setReceipt(result);setRating(0);setFeedback("");setSurveySent(false);
+      setCompleted(selected.name);setReceipt(result);
       setData(previous => ({...previous,visits:previous.visits.filter(guest => guest.id !== selected.id),total:Math.max(0,previous.total-1)}));
       setSelected(null);
       await refresh();
@@ -71,16 +68,6 @@ export default function CheckoutPage() {
     } finally {sending.current=false;setSubmitting(false);}
   }
 
-  async function sendSurvey() {
-    if (!receipt?.surveyToken || !rating || submitting) return;
-    setSubmitting(true);setError("");
-    try {
-      await apiRequest("/api/checkout", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...receipt,rating,feedback})});
-      setSurveySent(true);
-    } catch (caught) {setError(caught instanceof Error ? caught.message : "Penilaian belum terkirim.");}
-    finally {setSubmitting(false);}
-  }
-
   return <PublicShell>
     <section className="mx-auto min-h-[72vh] max-w-4xl px-4 py-10 sm:px-6 sm:py-14">
       <div className="mb-7 flex items-start gap-4">
@@ -88,9 +75,7 @@ export default function CheckoutPage() {
         <div><p className="text-xs font-bold uppercase tracking-widest text-sky-700">Buku tamu digital</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">Selesaikan layanan</h1><p className="mt-3 leading-7 text-slate-600">Cari nama Anda, lalu tekan <strong>Selesaikan layanan</strong> setelah urusan selesai. Tidak perlu memasukkan nomor antrean.</p></div>
       </div>
       {completed && <div role="status" className="mb-5 flex gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-5 text-sky-900"><CheckCircle2 className="mt-1 size-6 shrink-0" /><div><p className="font-bold">Terima kasih, {completed}.</p><p className="mt-1 text-sm">Layanan telah selesai. Waktu keluar sudah tercatat dan nama telah dihapus dari daftar aktif.</p></div></div>}
-      {receipt?.surveyToken && <div className="mb-5 rounded-2xl border border-sky-100 bg-white p-5">
-        {surveySent ? <p role="status" className="text-sm font-semibold text-sky-800">Terima kasih atas penilaian Anda.</p> : <><h2 className="font-bold">Bagaimana pelayanan kami?</h2><p className="mt-1 text-sm text-slate-500">Opsional. Kunjungan Anda sudah tercatat selesai.</p><div className="mt-3 flex flex-wrap gap-2">{[[4,"Sangat Baik"],[3,"Baik"],[2,"Cukup"],[1,"Kurang"]].map(([value,label]) => <Button key={value} variant={rating===value ? "default" : "outline"} onClick={() => setRating(Number(value))} aria-pressed={rating===value}>{label}</Button>)}</div>{rating > 0 && <><label htmlFor="survey-feedback" className="mt-4 block text-sm font-semibold">Saran atau masukan (opsional)</label><Textarea id="survey-feedback" className="mt-2" maxLength={1000} value={feedback} onChange={event=>setFeedback(event.target.value)} /><Button className="mt-3" disabled={submitting} onClick={() => void sendSurvey()}>Kirim penilaian</Button></>}</>}
-      </div>}
+      {receipt?.surveyToken && <ServiceReview key={receipt.visitCode} visitCode={receipt.visitCode} surveyToken={receipt.surveyToken} />}
       {error && <div role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</div>}
       <div className="overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-xl shadow-sky-900/5">
         <div className="border-b border-slate-100 p-5 sm:p-6">
