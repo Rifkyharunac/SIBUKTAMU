@@ -36,7 +36,10 @@ tidak memakai token maupun phone-number-ID Meta. URL WAHA wajib HTTPS.
 
 Pada komputer/server yang dapat menjangkau WAHA, atur WAHA_API_URL,
 WAHA_API_KEY, WAHA_SESSION dan WAHA_TEST_RECIPIENT=6285214900540.
-Jalankan `node tools/waha-smoke.mjs`. Skrip memeriksa sesi WORKING lalu mengirim
+Jalankan `node tools/waha-smoke.mjs` terlebih dahulu. Secara default skrip hanya
+memverifikasi identitas bot melalui jalur yang sama dengan aplikasi dan tidak
+mengirim pesan. Untuk pengiriman, jalankan `node tools/waha-smoke.mjs --send`;
+skrip memverifikasi identitas, menolak nomor bot sendiri, lalu mengirim
 tepat satu pesan uji tanpa data tamu. Periksa HP admin untuk memastikan pesan
 sampai. Jangan mengulang otomatis ketika waktu tunggu habis; pesan sebelumnya
 mungkin sudah diterima penyedia.
@@ -60,3 +63,45 @@ pesan yang diterima penyedia. Uji ini tidak mengirim pesan WhatsApp nyata.
 
 Dokumentasi: https://waha.devlike.pro/docs/how-to/send-messages/
 Keamanan: https://waha.devlike.pro/docs/how-to/security/
+
+## Diagnosis verifikasi WAHA — 24 September 2026
+
+Sebelumnya semua HTTP gagal pada `/api/sessions/{session}/me` menghasilkan
+pesan generik tentang sesi/API key. Penyebab sebenarnya tidak dapat ditentukan
+dari pesan lama tersebut. Skrip uji lama juga menggunakan endpoint berbeda,
+sehingga keberhasilannya tidak membuktikan jalur aplikasi bekerja.
+
+Sekarang aplikasi dan skrip menggunakan pemeriksaan yang sama. URL dasar boleh
+berakhiran `/api`; aplikasi menghindari `/api/api`. Header `X-Api-Key` tetap
+dipakai, redirect tidak diikuti, dan header bypass halaman peringatan ngrok
+disertakan. Tidak ada nilai konfigurasi rahasia yang perlu diganti.
+
+| Kode diagnosis | Makna dan tindak lanjut |
+| --- | --- |
+| WAHA_AUTH | HTTP 401/403 dari API: periksa API key, izin sesi, dan autentikasi proxy jika ada. |
+| WAHA_SESSION | Sesi/permintaan ditolak (409/422), identitas tidak valid, atau fallback belum WORKING. Periksa sesi dan QR. |
+| WAHA_ENDPOINT | Endpoint/sesi tidak ditemukan atau tidak didukung (404/405). Periksa URL, nama sesi, dan versi WAHA. |
+| WAHA_TUNNEL | HTML, redirect, atau penanda error tunnel. Periksa URL, halaman perantara, dan akses tunnel/proxy. |
+| WAHA_GATEWAY | 502/504 atau kegagalan gateway Cloudflare. Bisa berasal dari tunnel, proxy, atau server di belakangnya; kode HTTP saja belum memastikan akar masalah. |
+| WAHA_SERVER | HTTP 5xx lainnya dari layanan API. Periksa log WAHA dan proxy. |
+| WAHA_NETWORK / WAHA_TIMEOUT | Koneksi/TLS/jaringan gagal atau batas waktu tercapai. Belum membuktikan API key salah. |
+| WAHA_RATE_LIMIT / WAHA_RESPONSE | Batas permintaan atau respons tidak sesuai kontrak. |
+
+Jika `/me` mengembalikan 404/405 tanpa halaman tunnel, aplikasi mencoba
+`GET /api/sessions/{session}` satu kali. Pengiriman hanya diizinkan bila nama
+sesi cocok, status WORKING, dan `me.id` berisi identitas nomor telepon yang valid.
+Fallback tidak digunakan untuk melewati 401/403, timeout, atau gangguan server.
+Identitas `@lid` tidak dianggap nomor telepon. Larangan mengirim ke bot sendiri
+tetap berlaku. Pemeriksaan identitas tidak menampilkan nomor bot atau rahasia.
+
+Error mencantumkan tahap dan status HTTP jika tersedia, tanpa respons mentah,
+URL rahasia, API key, atau isi pesan. Tidak ada pengiriman ulang otomatis dalam
+adapter; kegagalan setelah POST perlu diperiksa di WAHA sebelum kirim ulang.
+
+Pengujian otomatis: `node --test tests/waha-provider.test.mjs` dan
+`node tests/security-integration.cjs`. Seluruh respons WAHA dalam pengujian ini
+disimulasikan. Uji tersebut tidak membuktikan tunnel produksi sedang aktif atau
+pesan diterima HP. Rahasia hosting disembunyikan oleh platform, sehingga uji
+langsung dijalankan pengelola di lingkungan yang memiliki konfigurasi tersebut.
+
+Acuan kontrak endpoint: https://waha.devlike.pro/docs/how-to/sessions/

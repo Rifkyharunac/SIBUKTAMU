@@ -66,8 +66,8 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  await assert.rejects(()=>deliverWhatsApp({...waEnv,WAHA_API_URL:'http://waha.example.test'},'085214900540','test'),/HTTPS/);
  await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>Response.json({},{status:401})),/API key/);
  await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async(url)=>Response.json(url.endsWith('/me')?{id:'628111111111@c.us'}:{})),/ID pesan/);
- await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>new Response('<html>private gateway text</html>')),/Respons penyedia tidak valid/);
- await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>{throw new TypeError('offline')}),/offline/);
+ await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>new Response('<html>private gateway text</html>')),/WAHA_TUNNEL/);
+ await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>{throw new TypeError('offline')}),/WAHA_NETWORK/);
  const notificationId=sql.prepare('SELECT id FROM whatsapp_notification_logs WHERE visit_id=?').get(visit.id).id;
  sql.prepare("UPDATE whatsapp_notification_logs SET status='QUEUED', recipient=? WHERE id=?").run('085214900540',notificationId);
  const savedFetch=global.fetch;Object.assign(env,waEnv);
