@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, or, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   adminCredentials,
@@ -15,7 +15,6 @@ import {
 } from "@/db/schema";
 import { requireAdminApi, writeAudit } from "@/lib/admin-auth";
 import { hashPassword, validatePassword } from "@/lib/password";
-import { sendWhatsAppNotification } from "@/lib/whatsapp";
 import { canTransition, isVisitStatus } from "@/lib/visit-rules";
 import { notificationPhone } from "@/lib/notification-recipients";
 
@@ -30,15 +29,17 @@ export async function POST(request: Request) {
 
   const notificationScope = and(
     isNull(whatsappNotificationLogs.archivedAt),
+    or(isNull(whatsappNotificationLogs.recipientUserId),eq(whatsappNotificationLogs.recipientUserId,identity.id)),
     identity.role === "ADMIN_BIDANG" ? inArray(whatsappNotificationLogs.visitId,db.select({id:visits.id}).from(visits).where(eq(visits.departmentId,identity.departmentId!))) : undefined,
   );
 
   async function requireNotificationAccess(id: string) {
-    const [item] = await db.select({ id: whatsappNotificationLogs.id, departmentId: visits.departmentId })
+    const [item] = await db.select({ id: whatsappNotificationLogs.id, recipientUserId:whatsappNotificationLogs.recipientUserId, departmentId: visits.departmentId })
       .from(whatsappNotificationLogs)
       .innerJoin(visits, eq(whatsappNotificationLogs.visitId, visits.id))
       .where(eq(whatsappNotificationLogs.id, id)).limit(1);
     if (!item) return { error: Response.json({ error: "Notifikasi tidak ditemukan." }, { status: 404 }) };
+    if(item.recipientUserId && item.recipientUserId!==identity.id)return {error:Response.json({error:"Notifikasi bukan milik akun Anda."},{status:403})};
     if (identity.role === "ADMIN_BIDANG" && item.departmentId !== identity.departmentId) {
       return { error: Response.json({ error: "Notifikasi bukan milik bidang Anda." }, { status: 403 }) };
     }
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
         id: crypto.randomUUID(), visitId, fromStatus: visit.status, toStatus: status, userId: identity.id,
       });
       await writeAudit({ userId: identity.id, action: "UPDATE_VISIT_STATUS", entity: "visits", entityId: visitId, oldValue: { status: visit.status }, newValue: { status }, ipAddress });
-      return Response.json({ success: true });
+      return Response.json({ success: true },{headers:status==="SELESAI"?{"X-Completed-Visit-Id":visitId}:{}});
     }
 
     if (action === "TRANSFER_VISIT") {
@@ -190,17 +191,7 @@ export async function POST(request: Request) {
       return Response.json({ success: true });
     }
 
-    if (action === "RETRY_WHATSAPP") {
-      const id = String(payload.id ?? "");
-      const access = await requireNotificationAccess(id);
-      if ("error" in access) return access.error;
-      const [log] = await db.select().from(whatsappNotificationLogs).where(eq(whatsappNotificationLogs.id, id)).limit(1);
-      if (!log) return Response.json({ error: "Notifikasi tidak ditemukan." }, { status: 404 });
-      if (["SENT", "ACCEPTED", "SENDING"].includes(log.status) || (log.status === "QUEUED" && Date.now()-new Date(log.createdAt).getTime()<60000) || log.attempts >= 5) return Response.json({error:"Pesan sudah dikirim, sedang diproses, atau mencapai batas percobaan."},{status:409});
-      await sendWhatsAppNotification({ logId: log.id, recipient: log.recipient, message: log.message });
-      await writeAudit({ userId: identity.id, action: "RETRY_WHATSAPP", entity: "whatsapp_notification_logs", entityId: id, ipAddress });
-      return Response.json({ success: true });
-    }
+    if(action==='RETRY_WHATSAPP')return Response.json({error:'Notifikasi WhatsApp sudah diganti dengan notifikasi aplikasi.'},{status:410});
 
     if (action === "MARK_NOTIFICATION_READ") {
       const id = String(payload.id ?? "");

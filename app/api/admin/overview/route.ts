@@ -120,6 +120,7 @@ export async function GET(request: Request) {
     }).from(users).innerJoin(roles, eq(users.roleId, roles.id)).leftJoin(adminCredentials, eq(adminCredentials.userId, users.id)).orderBy(asc(users.name)),
     db.select({
       id: whatsappNotificationLogs.id,
+      eventType:whatsappNotificationLogs.eventType,
       visitId: whatsappNotificationLogs.visitId,
       recipient: whatsappNotificationLogs.recipient,
       message: whatsappNotificationLogs.message,
@@ -137,7 +138,7 @@ export async function GET(request: Request) {
     }).from(whatsappNotificationLogs)
       .innerJoin(visits, eq(whatsappNotificationLogs.visitId, visits.id))
       .innerJoin(services, eq(visits.serviceId, services.id))
-      .where(scopeCondition)
+      .where(and(scopeCondition,sql`(${whatsappNotificationLogs.recipientUserId} IS NULL OR ${whatsappNotificationLogs.recipientUserId} = ${auth.identity.id})`))
       .orderBy(desc(whatsappNotificationLogs.createdAt)).limit(100),
     db.select({
       id: auditLogs.id, action: auditLogs.action, entity: auditLogs.entity, entityId: auditLogs.entityId,
@@ -147,7 +148,8 @@ export async function GET(request: Request) {
     db.select({ key: settings.key, value: settings.value }).from(settings).orderBy(asc(settings.key)),
   ]);
 
-  const [unread] = auth.identity.role === "VIEWER" ? [{value:0}] : await db.select({value:count()}).from(whatsappNotificationLogs).innerJoin(visits,eq(whatsappNotificationLogs.visitId,visits.id)).where(and(scopeCondition,eq(whatsappNotificationLogs.isRead,false),sql`${whatsappNotificationLogs.archivedAt} IS NULL`));
+  const ownerScope=sql`(${whatsappNotificationLogs.recipientUserId} IS NULL OR ${whatsappNotificationLogs.recipientUserId} = ${auth.identity.id})`;
+  const [unread] = auth.identity.role === "VIEWER" ? [{value:0}] : await db.select({value:count()}).from(whatsappNotificationLogs).innerJoin(visits,eq(whatsappNotificationLogs.visitId,visits.id)).where(and(ownerScope,scopeCondition,eq(whatsappNotificationLogs.isRead,false),sql`${whatsappNotificationLogs.archivedAt} IS NULL`));
   const safeVisits = auth.identity.role === "VIEWER"
     ? visitRows.map((visit) => ({ ...visit, phone: maskedPhone(visit.phone), signaturePath: null }))
     : visitRows;
@@ -163,7 +165,7 @@ export async function GET(request: Request) {
     users: auth.identity.role === "SUPER_ADMIN" ? userRows.map(user => ["SUPER_ADMIN", "ADMIN_BIDANG"].includes(user.roleName) ? { ...user, roleId: "role-super", role: "Admin", roleName: "SUPER_ADMIN" } : user) : [],
     notifications: auth.identity.role === "VIEWER" ? [] : notificationRows,
     unreadNotifications: unread?.value || 0,
-    notificationConfig: whatsappConfiguration(env as typeof env & WhatsAppEnvironment),
+    notificationConfig: {whatsappConfigured:false,channel:"APP"},
     auditLogs: auth.identity.role === "SUPER_ADMIN" ? auditRows : [],
     settings: auth.identity.role === "SUPER_ADMIN" ? settingRows : [],
   });

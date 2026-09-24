@@ -2,7 +2,7 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import { rejectUnsafeRequest, secureResponse, boundedJsonRequest } from "../lib/http-security";
 import { rateLimit } from "../lib/rate-limit";
-import { dispatchQueuedNotification, dispatchVisitNotifications } from "../lib/whatsapp";
+import { dispatchAppNotifications } from "../lib/app-notifications";
 import handler from "vinext/server/app-router-entry";
 
 interface Env {
@@ -66,10 +66,10 @@ const worker = {
       const result = secureResponse(response, request);
       const notificationVisitId = result.headers.get("X-Notification-Visit-Id");
       result.headers.delete("X-Notification-Visit-Id");
-      if (notificationVisitId) ctx.waitUntil(dispatchVisitNotifications(notificationVisitId).catch(() => console.error("notification_dispatch_failed")));
-      const notificationId = result.headers.get("X-Notification-Id");
-      result.headers.delete("X-Notification-Id");
-      if (notificationId) ctx.waitUntil(dispatchQueuedNotification(notificationId).catch(() => console.error("notification_dispatch_failed")));
+      if (notificationVisitId) ctx.waitUntil(dispatchAppNotifications(notificationVisitId,"ARRIVAL").catch(() => console.error("notification_dispatch_failed")));
+      const completedId=result.headers.get("X-Completed-Visit-Id");
+      result.headers.delete("X-Completed-Visit-Id");
+      if(completedId)ctx.waitUntil(dispatchAppNotifications(completedId,"COMPLETED").catch(()=>console.error("notification_dispatch_failed")));
       return result;
     } catch (error) {
       const oversized = error instanceof Error && error.message === "BODY_TOO_LARGE";

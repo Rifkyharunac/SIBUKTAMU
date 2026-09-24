@@ -6,7 +6,7 @@ import { adminCredentials, adminSessions, auditLogs, roles, users } from "@/db/s
 import { stableHash } from "@/lib/password";
 
 export const ADMIN_SESSION_COOKIE = "sibuktamu_session";
-const SESSION_DURATION_SECONDS = 12 * 60 * 60;
+export const SESSION_DURATION_SECONDS = 400 * 24 * 60 * 60;
 
 export type AdminIdentity = {
   id: string;
@@ -85,7 +85,7 @@ export async function getAdminIdentity(): Promise<AdminIdentity | null> {
 
   if (Date.now() - new Date(identity.lastSeenAt).getTime() > 5 * 60_000) {
     await Promise.all([
-      db.update(adminSessions).set({ lastSeenAt: now }).where(eq(adminSessions.id, sessionId)),
+      db.update(adminSessions).set({ lastSeenAt: now, expiresAt: new Date(Date.now() + SESSION_DURATION_SECONDS * 1000).toISOString() }).where(eq(adminSessions.id, sessionId)),
       db.update(users).set({ lastSeenAt: now }).where(eq(users.id, identity.id)),
     ]);
   }

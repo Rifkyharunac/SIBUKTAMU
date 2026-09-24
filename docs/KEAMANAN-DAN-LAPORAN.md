@@ -14,7 +14,7 @@ Isi jabatan, nama, dan NIP pengesahan pada Pengaturan. Tanda tangan tamu tersimp
 
 ## Pengamanan yang diterapkan
 
-- Username/sandi instansi, hashing PBKDF2 bersalt, perbandingan hash, cookie sesi Secure/HttpOnly/SameSite dengan masa berlaku 12 jam.
+- Username/sandi instansi, hashing PBKDF2 bersalt, perbandingan hash, cookie sesi Secure/HttpOnly/SameSite dengan masa berlaku hingga 400 hari, diperbarui selama dashboard digunakan (bukan jaminan login abadi; browser dapat menghapus cookie).
 - Sesi lama dicabut saat ganti sandi. Perubahan akun oleh Admin mencabut sesi akun tersebut. Admin tidak dapat menonaktifkan atau menurunkan perannya sendiri.
 - Pembatasan peran pada API, ekspor, dan citra tanda tangan tetap berlaku untuk Front Office dan Viewer. Akun lama Admin Bidang memiliki akses penuh yang sama dengan Admin, termasuk tanpa penempatan bidang.
 - Validasi Origin dan Sec-Fetch-Site untuk mutasi, tipe konten JSON, batas ukuran badan permintaan, validasi isian dan format/dimensi PNG.
@@ -28,7 +28,7 @@ Pengamanan ini tidak menjamin sistem tidak dapat diserang dan bukan hasil audit 
 
 ## Kinerja dan notifikasi
 
-Seed data tidak ditulis ulang pada setiap permintaan dalam isolate yang sudah siap. Grafik memakai agregasi seluruh data periode, bukan hanya 200 baris pratinjau. Tindakan baca/hapus notifikasi massal tidak dibatasi 100 baris. Pencarian diberi jeda singkat; polling dashboard berhenti saat tab tersembunyi. Pendaftaran mengembalikan bukti setelah data tersimpan; WhatsApp diproses di latar melalui waitUntil. Gangguan antrean notifikasi tidak mengubah pendaftaran yang sudah tersimpan menjadi pesan gagal. Dashboard tetap menjadi sumber status kunjungan. Provider WhatsApp Business harus dikonfigurasi untuk mengirim pesan otomatis.
+Seed data tidak ditulis ulang pada setiap permintaan dalam isolate yang sudah siap. Grafik memakai agregasi seluruh data periode, bukan hanya 200 baris pratinjau. Tindakan baca/hapus notifikasi massal tidak dibatasi 100 baris. Pencarian diberi jeda singkat; polling dashboard berhenti saat tab tersembunyi. Pendaftaran mengembalikan bukti setelah data tersimpan; Web Push diproses di latar melalui waitUntil. Gangguan antrean notifikasi tidak mengubah pendaftaran yang sudah tersimpan menjadi pesan gagal. Dashboard tetap menjadi sumber status kunjungan. WhatsApp tidak lagi dikirim dari alur aplikasi. Kunci Web Push dibuat otomatis, langganan perangkat terikat sesi aktif, dan notifikasi layar kunci tidak mengandung data tamu.
 
 ## Verifikasi
 

@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     const updated = await db.update(visits).set({checkOutAt:now,durationMinutes,status:"SELESAI",updatedAt:now}).where(and(eq(visits.id,visit.id),isNull(visits.checkOutAt),ne(visits.status,"BATAL"))).returning({id:visits.id});
     if (!updated.length) return Response.json({error:"Status baru saja berubah. Muat ulang halaman."},{status:409});
     await db.insert(visitStatusLogs).values({id:crypto.randomUUID(),visitId:visit.id,fromStatus:visit.status,toStatus:"SELESAI",notes:"Check-out mandiri terverifikasi"});
-    return Response.json({success:true,visitCode:code,durationMinutes});
+    return Response.json({success:true,visitCode:code,durationMinutes},{headers:{"X-Completed-Visit-Id":visit.id}});
   } catch {
     return Response.json({error:"Kunjungan belum dapat diselesaikan. Coba kembali."},{status:500});
   }

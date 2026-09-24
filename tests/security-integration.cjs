@@ -22,7 +22,7 @@ Module._load=function(name,parent,isMain){
 };
 require.extensions['.ts']=function(module,filename){module._compile(ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,esModuleInterop:true}}).outputText,filename);};
 const route=(file)=>require(root+'/app/api/'+file+'/route.ts');
-const request=(pathname,body,headers={})=>new Request('https://example.test/api/'+pathname,{method:body?'POST':'GET',headers:{...(body?{'content-type':'application/json',origin:'https://example.test'}:{}),'cf-connecting-ip':'192.0.2.1',...headers},...(body?{body:JSON.stringify(body)}:{})});
+const request=(pathname,body,headers={})=>new Request('https://example.test/api/'+pathname,{method:body?'POST':'GET',headers:{...(cookie?{cookie}:{}),...(body?{'content-type':'application/json',origin:'https://example.test'}:{}),'cf-connecting-ip':'192.0.2.1',...headers},...(body?{body:JSON.stringify(body)}:{})});
 (async()=>{
  const {rejectUnsafeRequest,boundedJsonRequest}=require(root+'/lib/http-security.ts');
  assert.equal(rejectUnsafeRequest(request('visits',{}, {origin:'https://attacker.test'})).status,403);
@@ -58,27 +58,8 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  res=await route('visits').POST(request('visits',{visitorName:'Test Visitor',visitorType:'Pribadi / Masyarakat',phone:'081234567890',serviceId:otherService.id,signature,consent:true}));assert.equal(res.status,422);assert.match((await res.json()).error,/keperluan/i);
  const customPurpose='Konsultasi program kerja sama pelatihan untuk masyarakat';
  res=await route('visits').POST(request('visits',{visitorName:'Test Visitor',visitorType:'Pribadi / Masyarakat',phone:'081234567890',serviceId:otherService.id,purpose:customPurpose,signature,consent:true}));assert.equal(res.status,201,await res.clone().text());const visit=(await res.json()).visit;assert.equal(visit.checkoutToken.length,64);assert.equal(visit.serviceName,customPurpose);assert.equal(sql.prepare('SELECT purpose FROM visits WHERE visit_code=?').get(visit.visitCode).purpose,customPurpose);assert.equal(res.headers.get('X-Notification-Visit-Id')?.length,36);console.log('PASS official catalog, custom purpose submission and notification queue');
- const {deliverWhatsApp}=require(root+'/lib/whatsapp-provider.ts');
- const waEnv={WHATSAPP_PROVIDER:'waha',WAHA_API_URL:'https://waha.example.test',WAHA_API_KEY:'local-test-key',WAHA_SESSION:'default'};
- let captured;
- const accepted=await deliverWhatsApp(waEnv,'085214900540','Local test',async(url,init)=>{if(url.endsWith('/me'))return Response.json({id:'628111111111@c.us'});captured={url,init};return Response.json({id:'waha-test-message'});});
- assert.equal(accepted.status,'ACCEPTED');assert.equal(captured.url,'https://waha.example.test/api/sendText');assert.equal(captured.init.headers['X-Api-Key'],'local-test-key');assert.equal(captured.init.headers.Authorization,undefined);assert.equal(JSON.parse(captured.init.body).chatId,'6285214900540@c.us');assert.equal(captured.init.redirect,'manual');
- await assert.rejects(()=>deliverWhatsApp({...waEnv,WAHA_API_URL:'http://waha.example.test'},'085214900540','test'),/HTTPS/);
- await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>Response.json({},{status:401})),/API key/);
- await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async(url)=>Response.json(url.endsWith('/me')?{id:'628111111111@c.us'}:{})),/ID pesan/);
- await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>new Response('<html>private gateway text</html>')),/WAHA_TUNNEL/);
- await assert.rejects(()=>deliverWhatsApp(waEnv,'085214900540','test',async()=>{throw new TypeError('offline')}),/WAHA_NETWORK/);
  const notificationId=sql.prepare('SELECT id FROM whatsapp_notification_logs WHERE visit_id=?').get(visit.id).id;
- sql.prepare("UPDATE whatsapp_notification_logs SET status='QUEUED', recipient=? WHERE id=?").run('085214900540',notificationId);
- const savedFetch=global.fetch;Object.assign(env,waEnv);
- try {
-   global.fetch=async(url)=>Response.json(url.endsWith('/me')?{id:'628111111111@c.us'}:{id:{_serialized:'waha-persisted-id'}});
-   await require(root+'/lib/whatsapp.ts').dispatchQueuedNotification(notificationId);
-   const log=sql.prepare('SELECT status,provider_message_id,sent_at FROM whatsapp_notification_logs WHERE id=?').get(notificationId);
-   assert.equal(log.status,'ACCEPTED');assert.equal(log.provider_message_id,'waha-persisted-id');assert.equal(log.sent_at,null);
-   const retry=await route('admin/action').POST(request('admin/action',{action:'RETRY_WHATSAPP',id:notificationId}));assert.equal(retry.status,409);
- }finally{global.fetch=savedFetch;for(const key of Object.keys(waEnv))delete env[key];}
- console.log('PASS WAHA simulated API, normalization, HTTPS, authentication errors, missing ID and accepted status');
+ const retired=await route('admin/action').POST(request('admin/action',{action:'RETRY_WHATSAPP',id:notificationId}));assert.equal(retired.status,410);
  res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode}));assert.equal(res.status,403);
  res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,token:'f'.repeat(64)}));assert.equal(res.status,403);
  res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,token:visit.checkoutToken}));assert.equal(res.status,200,await res.clone().text());
@@ -92,15 +73,26 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  addAdmin.run('inactive','Inactive','inactive@example.invalid','role-department',directService.departmentId,'081111111115',0);
  const routed=await route('visits').POST(request('visits',{visitorName:'Routing Test',visitorType:'Pribadi / Masyarakat',phone:'081234567877',serviceId:directService.id,signature,consent:true}));
  assert.equal(routed.status,201,await routed.clone().text()); const routedVisit=(await routed.json()).visit;
- assert.deepEqual(sql.prepare('SELECT recipient FROM whatsapp_notification_logs WHERE visit_id=? ORDER BY recipient').all(routedVisit.id).map(r=>r.recipient),['6281111111112','6281111111113','6281111111114']);
- const realTransport=global.fetch;Object.assign(env,waEnv);const delivered=[];
- try {
-   global.fetch=async(url,init)=>{if(url.endsWith('/me'))return Response.json({id:'628111111111@c.us'});delivered.push(JSON.parse(init.body).chatId);return Response.json({id:'message-'+delivered.length});};
-   const {dispatchVisitNotifications}=require(root+'/lib/whatsapp.ts');
-   await Promise.all([dispatchVisitNotifications(routedVisit.id),dispatchVisitNotifications(routedVisit.id)]);
-   assert.deepEqual(delivered.sort(),['6281111111112@c.us','6281111111113@c.us','6281111111114@c.us']);
- }finally{global.fetch=realTransport;for(const key of Object.keys(waEnv))delete env[key];}
- console.log('PASS multi-admin routing, all departments included, inactive exclusion, deduplication and concurrent dispatch');
+ const owners=sql.prepare('SELECT recipient_user_id AS id FROM whatsapp_notification_logs WHERE visit_id=? ORDER BY recipient_user_id').all(routedVisit.id).map(r=>r.id);
+ const selfId=sql.prepare("SELECT user_id FROM admin_credentials WHERE username='testadmin'").get().user_id;
+ assert.deepEqual(owners.sort(),[selfId,'field1','field2','otherfield'].sort());assert.ok(!owners.includes('inactive'));
+ const {queueAppNotifications,dispatchAppNotifications,validPushEndpoint}=require(root+'/lib/app-notifications.ts');
+ await queueAppNotifications(routedVisit.id,'ARRIVAL');assert.equal(sql.prepare('SELECT COUNT(*) n FROM whatsapp_notification_logs WHERE visit_id=?').get(routedVisit.id).n,4);
+ await queueAppNotifications(visit.id,'COMPLETED');await queueAppNotifications(visit.id,'COMPLETED');assert.equal(sql.prepare("SELECT COUNT(*) n FROM whatsapp_notification_logs WHERE visit_id=? AND event_type='COMPLETED'").get(visit.id).n,4);
+ res=await route('admin/alerts').GET(request('admin/alerts'));assert.equal(res.status,200);assert.match(res.headers.get('set-cookie'),/Max-Age=34560000/);assert.ok((await res.json()).items.every(n=>n.id.endsWith(':'+selfId)));
+ const otherNotice=sql.prepare("SELECT id FROM whatsapp_notification_logs WHERE recipient_user_id='field1'").get().id;
+ res=await route('admin/action').POST(request('admin/action',{action:'MARK_NOTIFICATION_READ',id:otherNotice}));assert.equal(res.status,403);
+ res=await route('admin/device').GET(request('admin/device'));assert.equal(res.status,200);const publicConfig=await res.json();assert.equal(Buffer.from(publicConfig.publicKey,'base64url').length,65);assert.ok(!('privateKey' in publicConfig));
+ const devicePair=await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},true,['deriveBits']);
+ const subscription={endpoint:'https://fcm.googleapis.com/fcm/send/local-test',keys:{p256dh:Buffer.from(await crypto.subtle.exportKey('raw',devicePair.publicKey)).toString('base64url'),auth:Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('base64url')}};
+ res=await route('admin/device').POST(request('admin/device',{subscription}));assert.equal(res.status,200,await res.clone().text());
+ for(const endpoint of ['http://localhost/test','https://127.0.0.1/test','https://fcm.googleapis.com.attacker.test/a','https://fcm.googleapis.com:444/a'])assert.equal(validPushEndpoint(endpoint),false);
+ const realTransport=global.fetch;const delivered=[];
+ try{global.fetch=async(url,init)=>{delivered.push({url,init});return new Response(null,{status:201});};await dispatchAppNotifications(routedVisit.id,'ARRIVAL');assert.equal(delivered.length,1);assert.equal(delivered[0].init.headers['content-encoding'],'aes128gcm');assert.equal(delivered[0].init.redirect,'error');
+ sql.prepare('UPDATE users SET is_active=0 WHERE id=?').run(selfId);await dispatchAppNotifications(routedVisit.id,'ARRIVAL');assert.equal(delivered.length,1);sql.prepare('UPDATE users SET is_active=1 WHERE id=?').run(selfId);
+ global.fetch=async()=>new Response(null,{status:410});await dispatchAppNotifications(routedVisit.id,'ARRIVAL');assert.equal(sql.prepare('SELECT COUNT(*) n FROM admin_push_subscriptions').get().n,0);
+ }finally{global.fetch=realTransport;}
+ console.log('PASS per-admin arrival/completion notifications, deduplication, persistent login, encrypted push, revoked access and expired device cleanup');
  const ExcelJS=require('exceljs/dist/exceljs.min.js');
  const {PDFDocument,PDFName}=require('pdf-lib');
  const exportBook=async()=>{const response=await route('admin/export').GET(request('admin/export?format=xlsx'));assert.equal(response.status,200,await response.clone().text());const bytes=await response.arrayBuffer();const book=new ExcelJS.Workbook();await book.xlsx.load(bytes);return {book,bytes};};
@@ -118,7 +110,7 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  console.log('PASS report scrolling, embedded signatures, row alignment, missing/corrupt signature labels and storage failure');
  const row={id:visit.id};
  for(let i=0;i<125;i++) sql.prepare("INSERT INTO whatsapp_notification_logs (id,visit_id,message,status) VALUES (?,?,?,'NOT_CONFIGURED')").run('notice-'+i,row.id,'Local test');
- res=await route('admin/action').POST(request('admin/action',{action:'MARK_ALL_NOTIFICATIONS_READ'}));assert.equal(res.status,200,await res.clone().text());assert.equal(sql.prepare('SELECT COUNT(*) n FROM whatsapp_notification_logs WHERE is_read=0').get().n,0);console.log('PASS marking more than 100 notifications read');
+ res=await route('admin/action').POST(request('admin/action',{action:'MARK_ALL_NOTIFICATIONS_READ'}));assert.equal(res.status,200,await res.clone().text());assert.equal(sql.prepare('SELECT COUNT(*) n FROM whatsapp_notification_logs WHERE is_read=0 AND (recipient_user_id IS NULL OR recipient_user_id=?)').get(selfId).n,0);assert.ok(sql.prepare("SELECT COUNT(*) n FROM whatsapp_notification_logs WHERE is_read=0 AND recipient_user_id='field1'").get().n>0);console.log('PASS marking more than 100 notifications read');
  const adminAction=async payload=>{const r=await route('admin/action').POST(request('admin/action',payload));assert.equal(r.status,200,await r.clone().text());return r.json();};
  const department=await adminAction({action:'SAVE_DEPARTMENT',code:'TEST',name:'Test Department'});
  await adminAction({action:'SAVE_DEPARTMENT',id:department.id,code:'TEST',name:'Updated Department'});
@@ -137,11 +129,12 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  await adminAction({action:'ARCHIVE_NOTIFICATION',id:'notice-0',archived:false});
  await adminAction({action:'DELETE_NOTIFICATION',id:'notice-0'});
  await adminAction({action:'DELETE_READ_NOTIFICATIONS'});
- assert.equal(sql.prepare('SELECT COUNT(*) n FROM whatsapp_notification_logs').get().n,0);
+ assert.equal(sql.prepare('SELECT COUNT(*) n FROM whatsapp_notification_logs WHERE recipient_user_id IS NULL OR recipient_user_id=?').get(selfId).n,0);
  assert.ok(sql.prepare('SELECT id FROM visits WHERE id=?').get(row.id),'notification cleanup preserves guest data');
  console.log('PASS master data updates, inactive catalog, settings, terminal status, survey and notification archive/delete');
  sql.prepare("UPDATE users SET role_id='role-viewer' WHERE id=(SELECT user_id FROM admin_credentials WHERE username='testadmin')").run();
  res=await route('admin/signature').GET(request('admin/signature?key=signatures/test'));assert.equal(res.status,403);
+ for(const endpoint of ['admin/device','admin/alerts']){const denied=await route(endpoint).GET(request(endpoint));assert.equal(denied.status,403);}
  const viewerBook=await exportBook();assert.equal(viewerBook.book.getWorksheet('Buku Tamu').getImages().length,1);assert.ok(viewerBook.book.getWorksheet('Buku Tamu').getColumn(10).values.includes('Akses tanda tangan dibatasi'));
  res=await route('admin/overview').GET(request('admin/overview'));assert.equal(res.status,200);const data=await res.json();assert.equal(data.notifications.length,0);assert.equal(data.visits.length,3);assert.ok(data.visits.every(v=>!v.signaturePath&&v.phone.includes('****')));console.log('PASS viewer restrictions');
  sql.prepare("UPDATE users SET role_id='role-department',department_id=NULL WHERE id=(SELECT user_id FROM admin_credentials WHERE username='testadmin')").run();res=await route('admin/export').GET(request('admin/export'));assert.equal(res.status,200);

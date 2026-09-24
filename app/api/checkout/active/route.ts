@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     ]);
     const result = updated.results[0] as {visitCode:string;durationMinutes:number;checkoutTokenHash:string|null} | undefined;
     if (!result) return Response.json({error:"Kunjungan sudah selesai, dibatalkan, atau tidak tersedia. Daftar telah diperbarui."}, {status:409});
-    return Response.json({success:true, visitCode:result.visitCode, durationMinutes:result.durationMinutes, surveyToken:result.checkoutTokenHash ? await stableHash("survey:" + result.checkoutTokenHash) : undefined});
+    return Response.json({success:true, visitCode:result.visitCode, durationMinutes:result.durationMinutes, surveyToken:result.checkoutTokenHash ? await stableHash("survey:" + result.checkoutTokenHash) : undefined},{headers:{"X-Completed-Visit-Id":payload.visitId}});
   } catch {
     return Response.json({error:"Layanan belum dapat diselesaikan. Periksa daftar sebelum mencoba kembali."}, {status:503});
   }

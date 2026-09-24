@@ -199,12 +199,15 @@ export const visitTransfers = sqliteTable("visit_transfers", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Historical table name retained to preserve existing notification history.
 export const whatsappNotificationLogs = sqliteTable(
   "whatsapp_notification_logs",
   {
     id: text("id").primaryKey(),
     visitId: text("visit_id").notNull().references(() => visits.id),
     recipient: text("recipient"),
+    recipientUserId: text("recipient_user_id").references(() => users.id),
+    eventType: text("event_type").notNull().default("ARRIVAL"),
     message: text("message").notNull(),
     status: text("status").notNull().default("QUEUED"),
     attempts: integer("attempts").notNull().default(0),

@@ -10,8 +10,8 @@ Sistem Informasi Buku Tamu Digital Dinas Tenaga Kerja dan Transmigrasi Provinsi 
 - Nomor antrean harian dan kode `BT-YYYYMMDD-NNN` yang dibuat atomik oleh database.
 - Tanda tangan HTML Canvas yang disimpan sebagai objek privat.
 - Jam masuk/keluar WITA dan durasi otomatis. Menu Selesaikan layanan menampilkan nama tamu yang belum selesai, dapat dicari, dan tidak memerlukan input nomor antrean. Konfirmasi diperlukan sebelum selesai; nama langsung hilang dari daftar aktif. Nomor antrean tetap menjadi referensi.
-- Login akun internal dan dashboard berbasis peran: Admin, Front Office, dan Viewer. Akun lama Admin Bidang memiliki tampilan dan akses penuh yang sama dengan Admin. Semua Admin aktif dengan nomor WhatsApp valid menerima notifikasi setiap kunjungan dari seluruh bidang.
-- Alur status, transfer bidang, notifikasi internal dengan status dibaca/arsip/hapus, WhatsApp log/retry/manual fallback, dan audit trail.
+- Login akun internal dan dashboard berbasis peran: Admin, Front Office, dan Viewer. Akun lama Admin Bidang memiliki tampilan dan akses penuh yang sama dengan Admin. Semua Admin aktif menerima notifikasi dalam aplikasi tanpa nomor WhatsApp.
+- Alur status, transfer bidang, notifikasi internal dengan status dibaca/arsip/hapus, notifikasi browser/PWA, dan audit trail.
 - QR check-in/check-out, poster A4, laporan Excel `.xlsx`, PDF A4 landscape, pencarian, dan filter.
 - Dashboard seluruh tujuan layanan dengan statistik harian, antrean, durasi, tren, layanan teratas, dan profil pengunjung.
 - Survei pelayanan opsional setelah check-out.
@@ -25,7 +25,7 @@ flowchart TD
   P --> API[API SIBUKTAMU]
   API --> D1[(D1 Relasional)]
   API --> R2[(R2 Tanda Tangan)]
-  API --> WA[WhatsApp Business API]
+  API --> PUSH[Web Push browser admin]
   A[Petugas Terautentikasi] --> ADM[Dashboard RBAC]
   ADM --> API
 ```
@@ -103,7 +103,7 @@ Pengujian keamanan menggunakan SQLite memori dan tidak mengirim WhatsApp atau me
 4. Jalankan `npm run db:migrate:remote` untuk menerapkan seluruh migrasi pada database yang telah dikonfigurasi.
 5. Jalankan `npm run deploy`. Perintah ini membangun dan menerbitkan aplikasi lengkap, bukan situs statis.
 6. Tambahkan secret melalui `npx wrangler secret put INITIAL_ADMIN_USERNAME --config wrangler.json`; ulangi untuk `INITIAL_ADMIN_PASSWORD`, `INITIAL_ADMIN_EMAIL`, dan `INITIAL_ADMIN_NAME`. Isikan pada prompt terminal, jangan pada kode.
-7. Untuk WhatsApp otomatis, tambahkan `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_API_URL`, dan `DEFAULT_ADMIN_WHATSAPP` sesuai konfigurasi provider. Tanpa itu, gunakan notifikasi dalam aplikasi.
+7. Login sebagai Admin, pilih Instal aplikasi admin, lalu Aktifkan notifikasi HP. Kunci Web Push dibuat otomatis di database privat. Tidak memerlukan konfigurasi WAHA.
 8. Masuk sebagai admin, ganti sandi awal, buat akun petugas, dan isi pejabat pengesahan laporan pada Pengaturan.
 9. Hubungkan domain yang disediakan Disnaker melalui konfigurasi Workers, lalu uji alur tamu sampai selesai dan ekspor.
 
@@ -115,6 +115,14 @@ Repositori ini berisi kode, aset, dan migrasi. Database tamu, tanda tangan yang 
 - Sandi disimpan sebagai hash PBKDF2 dengan salt unik; token sesi disimpan dalam bentuk hash dan cookie HTTP-only.
 - Query memakai prepared statement/ORM; input publik divalidasi dan dibatasi.
 - Tanda tangan tidak memiliki URL publik langsung.
-- Token WhatsApp hanya dibaca server dari environment.
+- Pengiriman WhatsApp dinonaktifkan pada alur aplikasi; kredensial lama tidak digunakan. Endpoint Web Push divalidasi dan langganan terkait akun serta sesi aktif.
 - Backup berkala D1 dan R2 perlu dijadwalkan sesuai kebijakan instansi.
 - Retensi dan penghapusan data harus mengikuti kebijakan kearsipan resmi, bukan otomatis tanpa persetujuan administrator.
+
+## Aplikasi admin dan notifikasi
+
+Penawaran instalasi dan manifest hanya tersedia setelah login Admin (termasuk akun lama Admin Bidang). iPhone menggunakan Safari → Bagikan → Tambahkan ke Layar Utama; aktifkan notifikasi dari aplikasi terpasang. Browser menentukan dukungan instalasi, push, suara, dan perilaku latar belakang. Pengguna masih dapat membuat pintasan manual dari menu browser; itu tidak memberikan akses admin.
+
+Notifikasi kunjungan masuk dan selesai tersimpan per akun. Dashboard mengecek setiap 15 detik saat terlihat dan dapat membunyikan nada setelah izin interaksi. Web Push memakai layanan push browser, tanpa server WAHA tambahan; saat situs ditutup pengiriman bergantung dukungan browser, koneksi internet, izin notifikasi dan pengaturan daya perangkat. Riwayat aplikasi menjadi rujukan jika push terlewat. Layar kunci tidak memuat identitas tamu.
+
+Cookie Secure/HttpOnly bertahan hingga 400 hari dan diperbarui saat dashboard digunakan. Logout, penggantian sandi, pencabutan akses, penghapusan data browser, atau kebijakan penyimpanan browser tetap dapat mengakhiri login. Tidak ada timeout tidak aktif 12 jam. Login lama yang sudah kedaluwarsa perlu masuk ulang sekali. Service worker tidak menyimpan halaman admin atau data tamu dalam cache.

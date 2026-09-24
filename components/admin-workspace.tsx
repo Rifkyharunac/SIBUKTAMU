@@ -1,4 +1,5 @@
 "use client";
+import { AdminApp } from "@/components/admin-app";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -84,7 +85,7 @@ type Service = { id: string; name: string; category: string; description: string
 type Employee = { id: string; name: string; position: string; departmentId: string; departmentName: string; isActive: boolean };
 type AdminUser = { id: string; name: string; email: string; username: string | null; mustChangePassword: boolean | null; roleId: string; role: string; roleName: string; departmentId: string | null; whatsappNumber: string | null; isActive: boolean; lastSeenAt: string | null };
 type Notification = {
-  id: string; visitId: string; recipient: string | null; message: string; status: string; attempts: number;
+  id: string; eventType: string; visitId: string; recipient: string | null; message: string; status: string; attempts: number;
   isRead: boolean; readAt: string | null; archivedAt: string | null; errorMessage: string | null; createdAt: string;
   visitCode: string; visitorName: string; serviceName: string; departmentId: string;
 };
@@ -210,6 +211,7 @@ export function AdminWorkspace({ section, initialIdentity, focusedVisitId }: { s
           {notice && <div className="mb-5 flex items-center gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm font-semibold text-sky-900 shadow-sm"><CheckCircle2 className="size-5 shrink-0" />{notice}</div>}
           {error && <div role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">{error}</div>}
           {saving && <p role="status" className="mb-4 text-sm text-sky-800">Menyimpan perubahan…</p>}
+          {role === "SUPER_ADMIN" && <AdminApp userId={initialIdentity.id} onRefresh={() => void load(true)} />}
           <fieldset disabled={saving} aria-busy={saving}>
           {loading && !data ? <LoadingState /> : data && <SectionContent section={section} data={data} search={search} setSearch={setSearch} status={status} setStatus={setStatus} department={department} setDepartment={setDepartment} load={load} action={action} selectVisit={setSelectedVisit} />}
           </fieldset>
@@ -348,7 +350,7 @@ function ServiceSection({ data, action }: { data: Overview; action: (payload: Re
       <FormField label="Kategori Layanan"><Input placeholder="Contoh: Hubungan Industrial" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></FormField>
       <FormField label="Bidang Penanggung Jawab"><NativeSelect className="w-full" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}><NativeSelectOption value="">Pilih bidang tujuan</NativeSelectOption>{data.departments.map((item) => <NativeSelectOption key={item.id} value={item.id}>{item.name}</NativeSelectOption>)}</NativeSelect></FormField>
       <FormField label="Deskripsi Layanan"><Textarea className="min-h-24" placeholder="Ringkasan layanan untuk ditampilkan kepada tamu" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></FormField>
-      <FormField label="WhatsApp Layanan" hint="Kontak referensi. Notifikasi dikirim ke semua akun Admin aktif yang memiliki nomor WhatsApp."><Input inputMode="tel" placeholder="08xxxxxxxxxx" value={form.whatsappNumber} onChange={(e) => setForm({ ...form, whatsappNumber: e.target.value })} /></FormField>
+      <FormField label="WhatsApp Layanan" hint="Kontak referensi. Pemberitahuan diterima semua akun Admin aktif melalui aplikasi."><Input inputMode="tel" placeholder="08xxxxxxxxxx" value={form.whatsappNumber} onChange={(e) => setForm({ ...form, whatsappNumber: e.target.value })} /></FormField>
       <CheckLabel label="Tamu wajib mengisi rincian keperluan" checked={form.requiresPurpose} setChecked={(value) => setForm({ ...form, requiresPurpose: value })} />
       <CheckLabel label="Tamu dapat memilih pegawai tujuan" checked={form.allowsEmployee} setChecked={(value) => setForm({ ...form, allowsEmployee: value })} />
       <CheckLabel label="Layanan aktif dan dapat dipilih" checked={form.isActive} setChecked={(value) => setForm({ ...form, isActive: value })} />
@@ -384,7 +386,7 @@ function UserSection({ data, action }: { data: Overview; action: (payload: Recor
       <FormField label={form.id ? "Reset Sandi (Opsional)" : "Sandi Sementara"} hint="Minimal 10 karakter, huruf besar, huruf kecil, dan angka. Petugas wajib menggantinya saat login pertama."><Input type="password" autoComplete="new-password" placeholder={form.id ? "Kosongkan jika tidak diubah" : "Masukkan sandi sementara"} value={form.temporaryPassword} onChange={(e) => setForm({ ...form, temporaryPassword: e.target.value })} /></FormField>
       <FormField label="Peran dan Kewenangan"><NativeSelect className="w-full" value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.target.value })}><NativeSelectOption value="role-super">Admin</NativeSelectOption><NativeSelectOption value="role-front">Front Office</NativeSelectOption><NativeSelectOption value="role-viewer">Pimpinan / Viewer</NativeSelectOption></NativeSelect></FormField>
       <FormField label="Bidang Petugas" hint="Informasi penempatan petugas. Admin tetap memiliki akses dan menerima notifikasi dari semua bidang."><NativeSelect className="w-full" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}><NativeSelectOption value="">Semua bidang / tidak terikat</NativeSelectOption>{data.departments.map((item) => <NativeSelectOption key={item.id} value={item.id}>{item.name}</NativeSelectOption>)}</NativeSelect></FormField>
-      <FormField label="Nomor WhatsApp" hint="Isi nomor agar Admin aktif menerima notifikasi setiap kunjungan dari semua bidang. Kosongkan jika tidak menerima WhatsApp. Gunakan nomor berbeda dari nomor bot."><Input inputMode="tel" placeholder="08xxxxxxxxxx" value={form.whatsappNumber} onChange={(e) => setForm({ ...form, whatsappNumber: e.target.value })} /></FormField>
+      <FormField label="Nomor WhatsApp" hint="Kontak referensi opsional. Pemberitahuan tamu diterima melalui aplikasi, tanpa nomor WhatsApp."><Input inputMode="tel" placeholder="08xxxxxxxxxx" value={form.whatsappNumber} onChange={(e) => setForm({ ...form, whatsappNumber: e.target.value })} /></FormField>
       <CheckLabel label="Akun pengguna aktif" checked={form.isActive} setChecked={(value) => setForm({ ...form, isActive: value })} />
     </Editor>
     <Panel title={`${data.users.length} Pengguna Terdaftar`} subtitle="Daftar akun petugas beserta peran dan status aksesnya.">
@@ -465,10 +467,6 @@ function NotificationSection({ data, action }: { data: Overview; action: (payloa
     archived: data.notifications.filter((item) => item.archivedAt).length,
   };
   const items = data.notifications.filter((item) => filter === "archived" ? item.archivedAt : filter === "unread" ? !item.archivedAt && !item.isRead : !item.archivedAt);
-  const canRetryAutomatically = data.notificationConfig.whatsappConfigured;
-  const manualLink = (item: Notification) => item.recipient
-    ? `https://wa.me/${item.recipient.replace(/\D/g, "").replace(/^0/, "62")}?text=${encodeURIComponent(item.message)}`
-    : "#";
   useEffect(() => {
     if (!autoMarked.current && counts.unread > 0) {
       autoMarked.current = true;
@@ -477,8 +475,7 @@ function NotificationSection({ data, action }: { data: Overview; action: (payloa
   }, [action, counts.unread]);
 
   return <div className="space-y-5">
-    {!canRetryAutomatically && <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-extrabold">Notifikasi aplikasi aktif</p><p className="mt-1 text-sm leading-6 text-amber-800">Pengiriman WhatsApp otomatis belum diaktifkan. Tamu tetap tercatat dan pemberitahuan tetap masuk ke dashboard. Gunakan “Kirim Manual” bila diperlukan.</p></div><Badge className="w-fit shrink-0 bg-amber-100 text-amber-900 hover:bg-amber-100">WhatsApp Manual</Badge></div>}
-    <Panel title="Pusat Notifikasi Kunjungan" subtitle="Diterima Penyedia berarti pesan telah diterima layanan WhatsApp; belum memastikan pesan sampai ke HP admin.">
+    <Panel title="Pusat Notifikasi Kunjungan" subtitle="Pemberitahuan tamu datang dan layanan selesai. Status dibaca tersimpan untuk akun masing-masing.">
       <div className="mb-5 flex flex-col gap-3 border-b border-slate-100 pb-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap gap-2">
           {([['active', 'Aktif'], ['unread', 'Belum Dibaca'], ['archived', 'Arsip']] as const).map(([key, label]) => <Button key={key} size="sm" variant={filter === key ? "default" : "outline"} className={filter === key ? "bg-[#0369a1] hover:bg-[#075985]" : ""} onClick={() => setFilter(key)}>{label}<span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-black ${filter === key ? "bg-white/20" : "bg-slate-100"}`}>{counts[key]}</span></Button>)}
@@ -496,12 +493,11 @@ function NotificationSection({ data, action }: { data: Overview; action: (payloa
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <button type="button" className="flex min-w-0 flex-1 gap-3 text-left" onClick={() => !item.isRead && action({ action: "MARK_NOTIFICATION_READ", id: item.id }, "Notifikasi ditandai sudah dibaca.")}>
             <div className={`grid size-11 shrink-0 place-items-center rounded-xl ${item.isRead ? "bg-slate-100 text-slate-500" : "bg-sky-100 text-[#0369a1]"}`}><MessageCircle className="size-5" /></div>
-            <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-extrabold text-slate-900">Tamu baru · {item.visitorName}</p>{!item.isRead && <span className="size-2 rounded-full bg-rose-600" aria-label="Belum dibaca" />}<StatusBadge status={item.status} /></div><p className="mt-1 text-sm font-semibold text-slate-700">{item.visitCode} · {item.serviceName}</p><p className="mt-1 text-xs text-slate-500">{formatDateTime(item.createdAt)} · tujuan {item.recipient || "belum tersedia"} · {item.attempts} percobaan</p>{item.errorMessage && <p className={`mt-2 text-sm font-medium ${item.status === "FAILED" ? "text-rose-700" : "text-amber-700"}`}>{item.errorMessage}</p>}</div>
+            <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-extrabold text-slate-900">{item.eventType === "COMPLETED" ? "Layanan selesai" : "Tamu baru"} · {item.visitorName}</p>{!item.isRead && <span className="size-2 rounded-full bg-rose-600" aria-label="Belum dibaca" />}<Badge variant="outline">{item.isRead ? "Sudah dibaca" : "Baru"}</Badge></div><p className="mt-1 text-sm font-semibold text-slate-700">{item.visitCode} · {item.serviceName}</p><p className="mt-1 text-xs text-slate-500">{formatDateTime(item.createdAt)}</p></div>
           </button>
           <div className="flex flex-wrap gap-2 xl:justify-end">
             {!item.isRead && <Button variant="outline" size="sm" onClick={() => action({ action: "MARK_NOTIFICATION_READ", id: item.id }, "Notifikasi ditandai sudah dibaca.")}><CheckCheck />Sudah Dibaca</Button>}
-            {!["SENT", "ACCEPTED", "SENDING"].includes(item.status) && canRetryAutomatically && <Button variant="outline" size="sm" className="border-sky-200 text-sky-800 hover:bg-sky-50" onClick={() => action({ action: "RETRY_WHATSAPP", id: item.id }, "Pengiriman ulang telah diproses.")}><RefreshCw />Kirim Ulang</Button>}
-            {!["SENT", "ACCEPTED", "SENDING"].includes(item.status) && !canRetryAutomatically && item.recipient && <Button asChild variant="outline" size="sm" className="border-sky-200 text-sky-800 hover:bg-sky-50"><a href={manualLink(item)} target="_blank" rel="noreferrer"><MessageCircle />Kirim Manual</a></Button>}
+            <Button asChild variant="outline" size="sm"><Link href={`/admin/kunjungan/${encodeURIComponent(item.visitId)}`}>Lihat kunjungan</Link></Button>
             <Button variant="outline" size="sm" onClick={() => action({ action: "ARCHIVE_NOTIFICATION", id: item.id, archived: !item.archivedAt }, item.archivedAt ? "Notifikasi dikembalikan ke daftar aktif." : "Notifikasi berhasil diarsipkan.")}>{item.archivedAt ? <Undo2 /> : <Archive />}{item.archivedAt ? "Pulihkan" : "Arsipkan"}</Button>
             <AlertDialog>
               <AlertDialogTrigger asChild><Button variant="ghost" size="sm" className="text-rose-700 hover:bg-rose-50 hover:text-rose-800"><Trash2 />Hapus</Button></AlertDialogTrigger>

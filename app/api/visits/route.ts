@@ -1,5 +1,4 @@
 import { needsPurpose, visitPurpose } from "@/lib/guest-purpose";
-import { notificationRecipients } from "@/lib/notification-recipients";
 import { env } from "cloudflare:workers";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { getDb } from "@/db";
@@ -207,13 +206,9 @@ export async function POST(request: Request) {
     ].join("\n");
     let notificationQueued = false;
     try {
-      const admins = await db.select({ role: roles.name, departmentId: users.departmentId, whatsappNumber: users.whatsappNumber, isActive: users.isActive })
-        .from(users).innerJoin(roles, eq(users.roleId, roles.id)).where(eq(users.isActive, true));
-      const recipients = notificationRecipients(admins, service.departmentId);
-      const notifications = (recipients.length ? recipients : [null]).map(recipient => ({
-        id: crypto.randomUUID(), visitId: id, recipient, message,
-        status: recipient ? "QUEUED" : "NOT_CONFIGURED",
-        errorMessage: recipient ? null : "Belum ada nomor WhatsApp valid pada akun Admin aktif. Perbarui nomor penerima pada menu Pengguna.",
+      const admins = await db.select({id:users.id,role:roles.name}).from(users).innerJoin(roles,eq(users.roleId,roles.id)).where(eq(users.isActive,true));
+      const notifications=admins.filter(a=>['SUPER_ADMIN','ADMIN_BIDANG','FRONT_OFFICE'].includes(a.role)).map(a=>({
+        id:id+':ARRIVAL:'+a.id,visitId:id,recipientUserId:a.id,eventType:'ARRIVAL',message,status:'AVAILABLE',createdAt:time.timestamp,updatedAt:time.timestamp,
       }));
       await db.batch([
         db.insert(submissionAttempts).values({id:crypto.randomUUID(),ipHash,phoneHash,createdAt:time.timestamp}),
