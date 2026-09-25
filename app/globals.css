@@ -462,3 +462,17 @@ textarea {
 .admin-panel table tbody tr:hover { background: #f8fcff; }
 button:focus-visible, a:focus-visible { outline: 3px solid #d6a641; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }
+
+/* Compact, readable phone layout; desktop retains the full workspace. */
+@media (max-width: 639px) {
+ .admin-workspace main { padding: 1rem .75rem; }
+ .admin-workspace header { min-height: 4.5rem; padding: .75rem; }
+ .admin-workspace header h1 { white-space: normal; overflow-wrap: anywhere; }
+ .admin-workspace .admin-panel { min-width: 0; padding: 1rem; }
+ .admin-workspace .stat-card > div { flex-direction: column-reverse; gap: .625rem; }
+ .admin-workspace .stat-card p:first-child { font-size: 1.6rem; overflow-wrap: anywhere; }
+ .admin-workspace .stat-card p:last-child { font-size: .75rem; letter-spacing: .02em; }
+ .admin-workspace input, .admin-workspace select, .admin-workspace textarea { font-size: 1rem; min-width: 0; }
+ .admin-workspace button, .admin-workspace select { min-height: 2.75rem; }
+ .admin-workspace aside { padding-bottom: env(safe-area-inset-bottom); }
+}

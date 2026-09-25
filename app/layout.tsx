@@ -9,11 +9,11 @@ export const metadata: Metadata = {
   description: "Sistem Informasi Buku Tamu Digital Dinas Tenaga Kerja dan Transmigrasi Provinsi Sulawesi Tengah.",
   icons: {
     icon: [
-      { url: "/favicon.svg?v=sibuktamu-2", type: "image/svg+xml" },
-      { url: "/sibuktamu-icon-32.png?v=2", type: "image/png", sizes: "32x32" },
+      { url: "/favicon.svg?v=sibuktamu-3", type: "image/svg+xml" },
+      { url: "/sibuktamu-icon-32.png?v=3", type: "image/png", sizes: "32x32" },
     ],
-    shortcut: "/favicon.ico?v=sibuktamu-2",
-    apple: { url: "/sibuktamu-icon-180.png?v=2", sizes: "180x180", type: "image/png" },
+    shortcut: "/favicon.ico?v=sibuktamu-3",
+    apple: { url: "/sibuktamu-icon-180.png?v=3", sizes: "180x180", type: "image/png" },
   },
 };
 
