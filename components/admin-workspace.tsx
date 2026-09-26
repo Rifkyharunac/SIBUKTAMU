@@ -140,6 +140,7 @@ export function AdminWorkspace({ section, initialIdentity, focusedVisitId }: { s
     if (!quiet) setLoading(true);
     try {
       const params = new URLSearchParams({ ...(search ? { search } : {}), ...(status ? { status } : {}), ...(department ? { department } : {}) });
+      if (focusedVisitId) params.set('visitId', focusedVisitId);
       const result = await apiRequest<Overview>(`/api/admin/overview?${params}`);
       if(requestId !== latestRequest.current) return;
       setData(result);

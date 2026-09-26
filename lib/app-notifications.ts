@@ -30,7 +30,9 @@ export async function queueAppNotifications(visitId:string,eventType:"ARRIVAL"|"
     .bind(visitId,eventType,eventType,eventType==='ARRIVAL'?'Tamu baru datang':'Layanan tamu selesai',new Date().toISOString(),new Date().toISOString(),visitId).run();
 }
 export async function dispatchAppNotifications(visitId:string,eventType:"ARRIVAL"|"COMPLETED") {
-  await queueAppNotifications(visitId,eventType);
+  // Push delivery is independent of the dashboard notification log.
+  try { await queueAppNotifications(visitId,eventType); }
+  catch { console.error('app_notification_queue_failed'); }
   const db=getD1();
   const subscriptions=await db.prepare(`SELECT p.endpoint,p.p256dh,p.auth,p.user_id FROM admin_push_subscriptions p
     JOIN users u ON u.id=p.user_id JOIN roles r ON r.id=u.role_id
@@ -39,7 +41,7 @@ export async function dispatchAppNotifications(visitId:string,eventType:"ARRIVAL
   if(!subscriptions.results.length)return;
   const keys=await pushKeys();
   // Lockscreen content deliberately contains no guest identity or visit purpose.
-  const data={title:eventType==='ARRIVAL'?'Tamu baru datang':'Layanan tamu selesai',body:'Buka SIBUKTAMU untuk melihat rincian kunjungan.',tag:visitId+':'+eventType,url:'/admin/notifikasi'};
+  const data={title:eventType==='ARRIVAL'?'Tamu baru datang':'Layanan tamu selesai',body:eventType==='ARRIVAL'?'Ada tamu baru menunggu pelayanan. Ketuk untuk melihat bidang dan keperluannya.':'Ketuk untuk melihat rincian kunjungan yang selesai.',tag:visitId+':'+eventType,url:'/admin/kunjungan/'+encodeURIComponent(visitId)};
   for(let i=0;i<subscriptions.results.length;i+=4) await Promise.allSettled(subscriptions.results.slice(i,i+4).map(async p=>{
     if(!validPushEndpoint(p.endpoint))return;
     try {
@@ -55,10 +57,11 @@ export async function testDevicePush(endpoint:string,userId:string,sessionId:str
  const p=await getD1().prepare('SELECT endpoint,p256dh,auth FROM admin_push_subscriptions WHERE endpoint=? AND user_id=? AND session_id=?').bind(endpoint,userId,sessionId).first<{endpoint:string;p256dh:string;auth:string}>();
  if(!p)return {status:404,error:'Perangkat belum terdaftar. Aktifkan kembali notifikasi perangkat.'};
  try {
-  const payload=await buildPushPayload({data:{title:'Uji notifikasi SIBUKTAMU',tag:'test:'+crypto.randomUUID()},options:{ttl:120,urgency:'high'}},{endpoint:p.endpoint,expirationTime:null,keys:{auth:p.auth,p256dh:p.p256dh}},await pushKeys());
+  const tag='test:'+crypto.randomUUID();
+  const payload=await buildPushPayload({data:{title:'Uji notifikasi SIBUKTAMU',body:'Pesan uji dari server SIBUKTAMU telah sampai ke perangkat ini.',tag},options:{ttl:120,urgency:'high'}},{endpoint:p.endpoint,expirationTime:null,keys:{auth:p.auth,p256dh:p.p256dh}},await pushKeys());
   const response=await fetch(p.endpoint,{...payload,redirect:'error',signal:AbortSignal.timeout(8000)});
   if(response.status===404||response.status===410){await getD1().prepare('DELETE FROM admin_push_subscriptions WHERE endpoint=?').bind(endpoint).run();return {status:410,error:'Langganan perangkat kedaluwarsa. Nonaktifkan lalu aktifkan kembali notifikasi.'};}
   if(!response.ok)return {status:502,error:'Layanan push menolak pengiriman (HTTP '+response.status+'). Coba aktifkan ulang notifikasi.'};
-  return {status:200,accepted:true};
+  return {status:200,accepted:true,tag};
  }catch{return {status:504,error:'Layanan push belum merespons. Periksa koneksi dan coba kembali.'};}
 }
