@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vinext build",
     "start": "vinext start",
-    "test": "node --test tests/visit-rules.test.mjs tests/migration-catalog.test.mjs tests/signature-pad.test.cjs tests/guest-notification.test.mjs tests/waha-provider.test.mjs",
+    "test": "node --test tests/visit-rules.test.mjs tests/migration-catalog.test.mjs tests/signature-pad.test.cjs tests/guest-notification.test.mjs tests/waha-provider.test.mjs tests/push-worker.test.cjs tests/push-device.test.mjs",
     "test:security": "node tests/security-integration.cjs",
     "typecheck": "wrangler types worker-env.d.ts && tsc --noEmit",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",

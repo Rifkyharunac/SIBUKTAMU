@@ -140,6 +140,7 @@ export function AdminWorkspace({ section, initialIdentity, focusedVisitId }: { s
     if (!quiet) setLoading(true);
     try {
       const params = new URLSearchParams({ ...(search ? { search } : {}), ...(status ? { status } : {}), ...(department ? { department } : {}) });
+      if (focusedVisitId) params.set('visitId', focusedVisitId);
       const result = await apiRequest<Overview>(`/api/admin/overview?${params}`);
       if(requestId !== latestRequest.current) return;
       setData(result);
@@ -343,9 +344,33 @@ function DepartmentSection({ data, action }: { data: Overview; action: (payload:
 function ServiceSection({ data, action }: { data: Overview; action: (payload: Record<string, unknown>, message?: string) => Promise<boolean> }) {
   const empty = { id: "", name: "", category: "Umum", departmentId: "", description: "", whatsappNumber: "", requiresPurpose: false, allowsEmployee: true, isActive: true };
   const [form, setForm] = useState(empty);
-  async function save() { if (await action({ action: "SAVE_SERVICE", ...form }, "Data layanan berhasil disimpan.")) setForm(empty); }
-  return <div className="grid items-start gap-6 2xl:grid-cols-[460px_minmax(0,1fr)]">
-    <Editor title={form.id ? "Ubah Data Layanan" : "Tambah Layanan"} onSave={save} onReset={() => setForm(empty)}>
+  const [serviceDepartment, setServiceDepartment] = useState("");
+  const [serviceStatus, setServiceStatus] = useState("all");
+  const editorRef = useRef<HTMLDivElement>(null);
+  const visibleServices = data.services.filter(item =>
+    (!serviceDepartment || item.departmentId === serviceDepartment) &&
+    (serviceStatus === "all" || item.isActive === (serviceStatus === "active"))
+  );
+  const selectedDepartment = data.departments.find(item => item.id === serviceDepartment);
+  function resetForm() { setForm({ ...empty, departmentId: serviceDepartment }); }
+  async function save() { if (await action({ action: "SAVE_SERVICE", ...form }, "Data layanan berhasil disimpan.")) resetForm(); }
+  return <div className="space-y-6">
+    <Panel title="Filter Layanan" subtitle="Pilih bidang untuk melihat dan mengelola layanannya.">
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] sm:items-end [&>label]:min-w-0 [&_[data-slot=native-select-wrapper]]:w-full">
+        <FormField label="Filter bidang"><NativeSelect className="w-full min-w-0" value={serviceDepartment} onChange={e => setServiceDepartment(e.target.value)}><NativeSelectOption value="">Semua bidang</NativeSelectOption>{data.departments.map(item => <NativeSelectOption key={item.id} value={item.id}>{item.code} — {item.name}{item.isActive ? "" : " (Nonaktif)"}</NativeSelectOption>)}</NativeSelect></FormField>
+        <FormField label="Status layanan"><NativeSelect className="w-full" value={serviceStatus} onChange={e => setServiceStatus(e.target.value)}><NativeSelectOption value="all">Semua status</NativeSelectOption><NativeSelectOption value="active">Aktif</NativeSelectOption><NativeSelectOption value="inactive">Nonaktif</NativeSelectOption></NativeSelect></FormField>
+        <Button variant="outline" disabled={!serviceDepartment && serviceStatus === "all"} onClick={() => { setServiceDepartment(""); setServiceStatus("all"); }}>Reset filter</Button>
+      </div>
+      <p role="status" className="mt-4 text-sm text-slate-600">Menampilkan {visibleServices.length} dari {data.services.length} layanan · {selectedDepartment?.name ?? "Semua bidang"} · {serviceStatus === "all" ? "Semua status" : serviceStatus === "active" ? "Aktif" : "Nonaktif"}</p>
+    </Panel>
+    <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_460px]">
+    <Panel title={`${visibleServices.length} Layanan Ditampilkan`} subtitle="Pilih Ubah Data untuk mengedit layanan. Filter tetap tersimpan setelah perubahan disimpan."><div className="grid max-h-[36rem] gap-3 overflow-y-auto pr-1">{visibleServices.length ? visibleServices.map((item) => <MasterCard key={item.id} title={item.name} description={`${item.category} · ${item.departmentName}`} active={item.isActive} onEdit={() => {
+      setForm({ ...item, whatsappNumber: item.whatsappNumber ?? "" });
+      editorRef.current?.scrollIntoView({ block: "start" });
+      editorRef.current?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
+    }} onToggle={() => action({ action: "SAVE_SERVICE", ...item, isActive: !item.isActive })} />) : <EmptyState text={data.services.length ? "Tidak ada layanan yang sesuai dengan filter. Pilih bidang atau status lain." : "Belum ada layanan terdaftar."} />}</div></Panel>
+    <div ref={editorRef} className="min-w-0 scroll-mt-24">
+    <Editor title={form.id ? "Ubah Data Layanan" : "Tambah Layanan"} onSave={save} onReset={resetForm}>
       <FormField label="Nama Layanan"><Input placeholder="Contoh: Konsultasi ketenagakerjaan" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></FormField>
       <FormField label="Kategori Layanan"><Input placeholder="Contoh: Hubungan Industrial" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></FormField>
       <FormField label="Bidang Penanggung Jawab"><NativeSelect className="w-full" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}><NativeSelectOption value="">Pilih bidang tujuan</NativeSelectOption>{data.departments.map((item) => <NativeSelectOption key={item.id} value={item.id}>{item.name}</NativeSelectOption>)}</NativeSelect></FormField>
@@ -355,7 +380,8 @@ function ServiceSection({ data, action }: { data: Overview; action: (payload: Re
       <CheckLabel label="Tamu dapat memilih pegawai tujuan" checked={form.allowsEmployee} setChecked={(value) => setForm({ ...form, allowsEmployee: value })} />
       <CheckLabel label="Layanan aktif dan dapat dipilih" checked={form.isActive} setChecked={(value) => setForm({ ...form, isActive: value })} />
     </Editor>
-    <Panel title={`${data.services.length} Layanan Terdaftar`} subtitle="Daftar layanan publik beserta bidang penanggung jawab dan status ketersediaannya."><div className="grid gap-3">{data.services.length ? data.services.map((item) => <MasterCard key={item.id} title={item.name} description={`${item.category} · ${item.departmentName}`} active={item.isActive} onEdit={() => setForm({ ...item, whatsappNumber: item.whatsappNumber ?? "" })} onToggle={() => action({ action: "SAVE_SERVICE", ...item, isActive: !item.isActive })} />) : <EmptyState text="Belum ada layanan terdaftar." />}</div></Panel>
+    </div>
+    </div>
   </div>;
 }
 

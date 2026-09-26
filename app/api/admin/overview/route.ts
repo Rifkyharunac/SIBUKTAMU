@@ -42,6 +42,8 @@ export async function GET(request: Request) {
     : requestedDepartment || null;
 
   const conditions = [];
+  const focusedVisitId = url.searchParams.get("visitId");
+  if (focusedVisitId) conditions.push(eq(visits.id, focusedVisitId));
   if (departmentFilter) conditions.push(eq(visits.departmentId, departmentFilter));
   else conditions.push(inArray(visits.departmentId, OFFICIAL_DEPARTMENT_IDS));
   if (status) conditions.push(eq(visits.status, status));

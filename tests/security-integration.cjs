@@ -89,6 +89,27 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  for(const endpoint of ['http://localhost/test','https://127.0.0.1/test','https://fcm.googleapis.com.attacker.test/a','https://fcm.googleapis.com:444/a'])assert.equal(validPushEndpoint(endpoint),false);
  const realTransport=global.fetch;const delivered=[];
  try{global.fetch=async(url,init)=>{delivered.push({url,init});return new Response(null,{status:201});};await dispatchAppNotifications(routedVisit.id,'ARRIVAL');assert.equal(delivered.length,1);assert.equal(delivered[0].init.headers['content-encoding'],'aes128gcm');assert.equal(delivered[0].init.redirect,'error');
+ // Decode the real encrypted payload independently, as the receiving browser does.
+ const {hkdfSync,createDecipheriv}=await import('node:crypto');
+ const body=Buffer.from(delivered[0].init.body),salt=body.subarray(0,16),serverPublic=body.subarray(21,86);
+ assert.equal(body.readUInt32BE(16),4096);assert.equal(body[20],65);
+ const serverKey=await crypto.subtle.importKey('raw',serverPublic,{name:'ECDH',namedCurve:'P-256'},false,[]);
+ const shared=await crypto.subtle.deriveBits({name:'ECDH',public:serverKey},devicePair.privateKey,256);
+ const ikm=hkdfSync('sha256',Buffer.from(shared),Buffer.from(subscription.keys.auth,'base64url'),Buffer.concat([Buffer.from('WebPush: info\0'),Buffer.from(subscription.keys.p256dh,'base64url'),serverPublic]),32);
+ const cek=hkdfSync('sha256',Buffer.from(ikm),salt,Buffer.from('Content-Encoding: aes128gcm\0'),16);
+ const nonce=hkdfSync('sha256',Buffer.from(ikm),salt,Buffer.from('Content-Encoding: nonce\0'),12);
+ const decipher=createDecipheriv('aes-128-gcm',Buffer.from(cek),Buffer.from(nonce));decipher.setAuthTag(body.subarray(-16));
+ const plain=Buffer.concat([decipher.update(body.subarray(86,-16)),decipher.final()]);
+ let end=plain.length-1;while(plain[end]===0)end--;assert.equal(plain[end],2);
+ const pushData=JSON.parse(plain.subarray(0,end).toString());
+ assert.equal(pushData.url,'/admin/kunjungan/'+routedVisit.id);assert.match(pushData.body,/menunggu/);
+ assert.ok(!JSON.stringify(pushData).includes('Routing Test'));
+ const originalPrepare=env.DB.prepare;
+ try {
+  env.DB.prepare=q=>{if(q.startsWith('INSERT OR IGNORE INTO whatsapp_notification_logs'))throw Error('simulated log outage');return originalPrepare(q);};
+  await dispatchAppNotifications(routedVisit.id,'ARRIVAL');assert.equal(delivered.length,2,'dashboard log failure must not stop push');
+ } finally {env.DB.prepare=originalPrepare;}
+ delivered.pop();
  sql.prepare('UPDATE users SET is_active=0 WHERE id=?').run(selfId);await dispatchAppNotifications(routedVisit.id,'ARRIVAL');assert.equal(delivered.length,1);sql.prepare('UPDATE users SET is_active=1 WHERE id=?').run(selfId);
  global.fetch=async()=>new Response(null,{status:410});await dispatchAppNotifications(routedVisit.id,'ARRIVAL');assert.equal(sql.prepare('SELECT COUNT(*) n FROM admin_push_subscriptions').get().n,0);
  }finally{global.fetch=realTransport;}
@@ -187,6 +208,8 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,surveyToken:receipt.surveyToken,rating:4}));assert.equal(res.status,403,'receipt bound to one visit');
  res=await route('admin/overview').GET(request('admin/overview'));assert.equal((await res.json()).visits.find(v=>v.id===activeId).status,'SELESAI');
  console.log('PASS public checkout privacy, search, active statuses, cancellation, transactional rollback, repeat completion, dashboard and survey');
+ res=await route('admin/overview').GET(request('admin/overview?visitId='+visit.id));
+ assert.deepEqual((await res.json()).visits.map(v=>v.id),[visit.id],'notification link fetches the requested visit directly');
  const {rateLimit}=require(root+'/lib/rate-limit.ts');for(let i=0;i<3;i++)await rateLimit(request('auth/login'),'test',3,900);res=await rateLimit(request('auth/login'),'test',3,900);assert.equal(res.status,429);console.log('PASS atomic request rate limit');
  const auth=require(root+'/lib/admin-auth.ts');
  const user=sql.prepare("SELECT user_id FROM admin_credentials WHERE username='testadmin'").get().user_id;

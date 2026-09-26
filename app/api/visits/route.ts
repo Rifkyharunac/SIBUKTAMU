@@ -204,7 +204,6 @@ export async function POST(request: Request) {
       "",
       "Ada tamu yang menunggu pelayanan pada bidang tujuan di atas.",
     ].join("\n");
-    let notificationQueued = false;
     try {
       const admins = await db.select({id:users.id,role:roles.name}).from(users).innerJoin(roles,eq(users.roleId,roles.id)).where(eq(users.isActive,true));
       const notifications=admins.filter(a=>['SUPER_ADMIN','ADMIN_BIDANG','FRONT_OFFICE'].includes(a.role)).map(a=>({
@@ -215,7 +214,6 @@ export async function POST(request: Request) {
         db.insert(visitStatusLogs).values({id:crypto.randomUUID(),visitId:id,toStatus:"BARU",notes:"Kunjungan dikirim oleh tamu"}),
         ...notifications.map(notification => db.insert(whatsappNotificationLogs).values(notification)),
       ]);
-      notificationQueued = true;
     } catch { console.error("visit_saved_notification_queue_failed", id); }
 
 
@@ -230,7 +228,7 @@ export async function POST(request: Request) {
         departmentName: service.departmentName,
         serviceName: displayedPurpose,
       },
-    }, { status: 201, headers: notificationQueued ? { "X-Notification-Visit-Id": id } : {} });
+    }, { status: 201, headers: { "X-Notification-Visit-Id": id } });
   } catch (caught) {
     console.error("visit_submit_failed", caught);
     return Response.json({ error: "Terjadi kendala. Data belum terkirim, silakan coba kembali." }, { status: 500 });
