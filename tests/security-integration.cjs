@@ -214,6 +214,21 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  const auth=require(root+'/lib/admin-auth.ts');
  const user=sql.prepare("SELECT user_id FROM admin_credentials WHERE username='testadmin'").get().user_id;
  sql.prepare("UPDATE users SET role_id='role-super',department_id=NULL WHERE id=?").run(user);
+ const cleanup=route('admin/cleanup');
+ const snapshot=await (await cleanup.GET()).json();assert.ok(snapshot.ids.length>1);
+ const keep=snapshot.ids.pop(),targets=snapshot.ids;
+ const accountsBefore=sql.prepare('SELECT COUNT(*) n FROM users').get().n;
+ res=await cleanup.POST(request('admin/cleanup',{ids:targets,confirmation:'wrong'}));assert.equal(res.status,422);
+ const removeObject=env.BUCKET.delete;env.BUCKET.delete=async()=>{throw new Error('storage unavailable')};
+ res=await cleanup.POST(request('admin/cleanup',{ids:targets,confirmation:'HAPUS DATA PERCOBAAN'}));assert.equal(res.status,503);
+ env.BUCKET.delete=removeObject;
+ res=await cleanup.POST(request('admin/cleanup',{ids:targets,confirmation:'HAPUS DATA PERCOBAAN'}));assert.equal(res.status,200);assert.equal((await res.json()).deleted,targets.length);
+ assert.ok(sql.prepare('SELECT id FROM visits WHERE id=?').get(keep),'visits outside snapshot survive');
+ for(const id of targets){assert.equal(sql.prepare('SELECT id FROM visits WHERE id=?').get(id),undefined);for(const table of ['service_surveys','whatsapp_notification_logs','visit_transfers','visit_status_logs'])assert.equal(sql.prepare(`SELECT COUNT(*) n FROM ${table} WHERE visit_id=?`).get(id).n,0);}
+ assert.equal(sql.prepare('SELECT COUNT(*) n FROM users').get().n,accountsBefore);
+ res=await cleanup.POST(request('admin/cleanup',{ids:targets,confirmation:'HAPUS DATA PERCOBAAN'}));assert.equal((await res.json()).deleted,0);
+ const cleanupCookie=cookie;cookie='';assert.equal((await cleanup.GET()).status,401);cookie=cleanupCookie;
+ console.log('PASS bounded authenticated cleanup, confirmation, storage failure, dependencies, account preservation and idempotence');
  const other=await auth.createAdminSession(user);
  const current=cookie;
  const before=sql.prepare('SELECT COUNT(*) n FROM admin_sessions').get().n;

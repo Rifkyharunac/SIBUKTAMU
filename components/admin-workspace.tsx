@@ -1,4 +1,5 @@
 "use client";
+import { CleanupTestData } from '@/components/cleanup-test-data';
 import { AdminApp } from "@/components/admin-app";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -555,7 +556,7 @@ function SettingsSection({ data, action }: { data: Overview; action: (payload: R
     allow_outside_hours: { title: "Pendaftaran di Luar Jam Layanan", description: "Gunakan nilai true untuk mengizinkan atau false untuk menutup." },
     data_retention: { title: "Kebijakan Retensi Data", description: "Keterangan masa simpan data sesuai ketentuan kearsipan." },
   };
-  return <Panel title="Pengaturan Operasional" subtitle="Konfigurasi dasar pelayanan dan pengelolaan data SIBUKTAMU."><div className="space-y-4">{items.map((item, index) => { const label = labels[item.key] ?? { title: statusLabel(item.key), description: "Pengaturan sistem." }; return <article key={item.key} className="rounded-2xl border border-slate-200 bg-slate-50/40 p-4 sm:p-5"><div className="mb-3"><p className="text-sm font-extrabold text-slate-900">{label.title}</p><p className="mt-1 text-xs leading-5 text-slate-500">{label.description}</p></div><div className="flex flex-col gap-2 sm:flex-row"><Input className="h-11 bg-white" value={item.value} onChange={(e) => setItems(items.map((current, currentIndex) => currentIndex === index ? { ...current, value: e.target.value } : current))} /><Button className="h-11 bg-[#0369a1] px-5 hover:bg-[#075985]" onClick={() => action({ action: "SAVE_SETTING", key: item.key, value: item.value }, "Pengaturan berhasil disimpan.")}>Simpan Pengaturan</Button></div></article>; })}</div></Panel>;
+  return <><Panel title="Pengaturan Operasional" subtitle="Konfigurasi dasar pelayanan dan pengelolaan data SIBUKTAMU."><div className="space-y-4">{items.map((item, index) => { const label = labels[item.key] ?? { title: statusLabel(item.key), description: "Pengaturan sistem." }; return <article key={item.key} className="rounded-2xl border border-slate-200 bg-slate-50/40 p-4 sm:p-5"><div className="mb-3"><p className="text-sm font-extrabold text-slate-900">{label.title}</p><p className="mt-1 text-xs leading-5 text-slate-500">{label.description}</p></div><div className="flex flex-col gap-2 sm:flex-row"><Input className="h-11 bg-white" value={item.value} onChange={(e) => setItems(items.map((current, currentIndex) => currentIndex === index ? { ...current, value: e.target.value } : current))} /><Button className="h-11 bg-[#0369a1] px-5 hover:bg-[#075985]" onClick={() => action({ action: "SAVE_SETTING", key: item.key, value: item.value }, "Pengaturan berhasil disimpan.")}>Simpan Pengaturan</Button></div></article>; })}</div></Panel><CleanupTestData /></>;
 }
 
 function Editor({ title, onSave, onReset, children }: { title: string; onSave: () => void; onReset: () => void; children: React.ReactNode }) {
