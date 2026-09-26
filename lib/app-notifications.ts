@@ -43,10 +43,22 @@ export async function dispatchAppNotifications(visitId:string,eventType:"ARRIVAL
   for(let i=0;i<subscriptions.results.length;i+=4) await Promise.allSettled(subscriptions.results.slice(i,i+4).map(async p=>{
     if(!validPushEndpoint(p.endpoint))return;
     try {
-      const payload=await buildPushPayload({data:JSON.stringify(data),options:{ttl:3600}}, {endpoint:p.endpoint,expirationTime:null,keys:{p256dh:p.p256dh,auth:p.auth}},keys);
+      const payload=await buildPushPayload({data:JSON.stringify(data),options:{ttl:3600,urgency:"high"}}, {endpoint:p.endpoint,expirationTime:null,keys:{p256dh:p.p256dh,auth:p.auth}},keys);
       const response=await fetch(p.endpoint,{...payload,redirect:'error',signal:AbortSignal.timeout(8000)});
       if(response.status===404||response.status===410)await db.prepare('DELETE FROM admin_push_subscriptions WHERE endpoint=?').bind(p.endpoint).run();
       else if(!response.ok)console.error('browser_push_rejected',response.status);
     }catch{console.error('browser_push_unavailable');}
   }));
+}
+
+export async function testDevicePush(endpoint:string,userId:string,sessionId:string) {
+ const p=await getD1().prepare('SELECT endpoint,p256dh,auth FROM admin_push_subscriptions WHERE endpoint=? AND user_id=? AND session_id=?').bind(endpoint,userId,sessionId).first<{endpoint:string;p256dh:string;auth:string}>();
+ if(!p)return {status:404,error:'Perangkat belum terdaftar. Aktifkan kembali notifikasi perangkat.'};
+ try {
+  const payload=await buildPushPayload({data:{title:'Uji notifikasi SIBUKTAMU',tag:'test:'+crypto.randomUUID()},options:{ttl:120,urgency:'high'}},{endpoint:p.endpoint,expirationTime:null,keys:{auth:p.auth,p256dh:p.p256dh}},await pushKeys());
+  const response=await fetch(p.endpoint,{...payload,redirect:'error',signal:AbortSignal.timeout(8000)});
+  if(response.status===404||response.status===410){await getD1().prepare('DELETE FROM admin_push_subscriptions WHERE endpoint=?').bind(endpoint).run();return {status:410,error:'Langganan perangkat kedaluwarsa. Nonaktifkan lalu aktifkan kembali notifikasi.'};}
+  if(!response.ok)return {status:502,error:'Layanan push menolak pengiriman (HTTP '+response.status+'). Coba aktifkan ulang notifikasi.'};
+  return {status:200,accepted:true};
+ }catch{return {status:504,error:'Layanan push belum merespons. Periksa koneksi dan coba kembali.'};}
 }

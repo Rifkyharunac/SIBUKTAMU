@@ -5,11 +5,10 @@ self.addEventListener('push',event=>{
  event.waitUntil((async()=>{
   let data={};try{data=event.data?.json()||{};}catch{}
   const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
-  const visible=windows.filter(w=>new URL(w.url).pathname.startsWith('/admin')&&w.visibilityState==='visible');
   for(const w of windows)w.postMessage({type:'SIBUKTAMU_REFRESH'});
-  if(visible.length)return;
   await self.registration.showNotification(data.title||'Pemberitahuan SIBUKTAMU',{
    body:'Buka SIBUKTAMU untuk melihat rincian kunjungan.',icon:'/sibuktamu-icon-192.png',badge:'/sibuktamu-icon-192.png',
+   silent:false,vibrate:[200,100,200],renotify:true,
    tag:typeof data.tag==='string'?data.tag:'sibuktamu',data:{url:'/admin/notifikasi'}
   });
  })());

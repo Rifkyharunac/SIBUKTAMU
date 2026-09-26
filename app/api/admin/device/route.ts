@@ -1,7 +1,7 @@
 import { requireAdminApi, readSessionToken, sessionCookie, SESSION_DURATION_SECONDS } from "@/lib/admin-auth";
 import { getD1 } from "@/db";
 import { stableHash } from "@/lib/password";
-import { pushKeys,validPushEndpoint } from "@/lib/app-notifications";
+import { pushKeys,validPushEndpoint,testDevicePush } from "@/lib/app-notifications";
 
 export async function GET(request:Request) {
  const auth=await requireAdminApi(["SUPER_ADMIN","ADMIN_BIDANG"]);if('error' in auth)return auth.error;
@@ -18,6 +18,7 @@ export async function POST(request:Request) {
  const endpoint=body?.subscription?.endpoint;
  if(typeof endpoint!=='string'||endpoint.length>2048||!validPushEndpoint(endpoint))return Response.json({error:'Alamat notifikasi perangkat tidak didukung.'},{status:422});
  const db=getD1();
+ if(body.action==='TEST'){const result=await testDevicePush(endpoint,auth.identity.id,await stableHash(token));return Response.json(result,{status:result.status});}
  if(body.action==='UNSUBSCRIBE') {await db.prepare('DELETE FROM admin_push_subscriptions WHERE endpoint=? AND user_id=?').bind(endpoint,auth.identity.id).run();return Response.json({success:true});}
  const keys=body.subscription?.keys;
  if(!keys || typeof keys.p256dh!=='string'||typeof keys.auth!=='string'|| !/^[A-Za-z0-9_-]+$/.test(keys.p256dh)||!/^[A-Za-z0-9_-]+$/.test(keys.auth)||Buffer.from(keys.p256dh,'base64url').length!==65||Buffer.from(keys.auth,'base64url').length!==16) return Response.json({error:'Kunci perangkat tidak valid.'},{status:422});
