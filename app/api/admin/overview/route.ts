@@ -1,4 +1,5 @@
-import { and, asc, count, desc, eq, gte, inArray, like, or, sql } from "drizzle-orm";
+import {validPeriod,shiftMonth} from '@/lib/report-period';
+import { and, asc, count, desc, eq, gte, inArray, like, lte, or, sql } from "drizzle-orm";
 import { whatsappConfiguration, type WhatsAppEnvironment } from "@/lib/whatsapp-provider";
 import { env } from "cloudflare:workers";
 import { getDb } from "@/db";
@@ -37,6 +38,10 @@ export async function GET(request: Request) {
   const requestedDepartment = url.searchParams.get("department")?.trim() ?? "";
   const time = witaParts();
   const monthPrefix = time.dateKey.slice(0, 7);
+  const previousMonth=shiftMonth(monthPrefix,-1);
+  const from=url.searchParams.get('from')||'',to=url.searchParams.get('to')||'';
+  if((from||to)&&!validPeriod(from,to))return Response.json({error:'Periode laporan tidak valid.'},{status:422});
+  const page=Math.max(0,Math.min(100000,Math.floor(Number(url.searchParams.get('page'))||0)));
   const departmentFilter = auth.identity.role === "ADMIN_BIDANG"
     ? auth.identity.departmentId
     : requestedDepartment || null;
@@ -46,6 +51,7 @@ export async function GET(request: Request) {
   if (focusedVisitId) conditions.push(eq(visits.id, focusedVisitId));
   if (departmentFilter) conditions.push(eq(visits.departmentId, departmentFilter));
   else conditions.push(inArray(visits.departmentId, OFFICIAL_DEPARTMENT_IDS));
+  if(from&&to)conditions.push(gte(visits.visitDate,from),lte(visits.visitDate,to));
   if (status) conditions.push(eq(visits.status, status));
   if (search) {
     const term = `%${search}%`;
@@ -82,7 +88,7 @@ export async function GET(request: Request) {
     .innerJoin(departments, eq(visits.departmentId, departments.id))
     .innerJoin(services, eq(visits.serviceId, services.id))
     .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(desc(visits.checkInAt)).limit(200);
+    .orderBy(desc(visits.checkInAt),desc(visits.id)).limit(200).offset(page*200);
 
   const scopeCondition = departmentFilter
     ? eq(visits.departmentId, departmentFilter)
@@ -92,6 +98,7 @@ export async function GET(request: Request) {
     db.select({
       today: sql<number>`SUM(CASE WHEN ${visits.visitDate} = ${time.dateKey} THEN 1 ELSE 0 END)`,
       month: sql<number>`SUM(CASE WHEN ${visits.visitDate} LIKE ${monthPrefix+'%'} THEN 1 ELSE 0 END)`,
+      previousMonth: sql<number>`SUM(CASE WHEN ${visits.visitDate} LIKE ${previousMonth+'%'} THEN 1 ELSE 0 END)`,
       active: sql<number>`SUM(CASE WHEN ${visits.checkOutAt} IS NULL AND ${visits.status} != 'BATAL' THEN 1 ELSE 0 END)`,
       waiting: sql<number>`SUM(CASE WHEN ${visits.status} IN ('BARU','MENUNGGU','DITERIMA') THEN 1 ELSE 0 END)`,
       serving: sql<number>`SUM(CASE WHEN ${visits.status} = 'SEDANG_DILAYANI' THEN 1 ELSE 0 END)`,
@@ -152,10 +159,12 @@ export async function GET(request: Request) {
 
   const ownerScope=sql`(${whatsappNotificationLogs.recipientUserId} IS NULL OR ${whatsappNotificationLogs.recipientUserId} = ${auth.identity.id})`;
   const [unread] = auth.identity.role === "VIEWER" ? [{value:0}] : await db.select({value:count()}).from(whatsappNotificationLogs).innerJoin(visits,eq(whatsappNotificationLogs.visitId,visits.id)).where(and(ownerScope,scopeCondition,eq(whatsappNotificationLogs.isRead,false),sql`${whatsappNotificationLogs.archivedAt} IS NULL`));
+  const monthly = from&&to ? await db.select({month:sql<string>`substr(${visits.visitDate},1,7)`,count:count()}).from(visits).where(and(...conditions)).groupBy(sql`substr(${visits.visitDate},1,7)`).orderBy(sql`substr(${visits.visitDate},1,7)`) : [];
   const safeVisits = auth.identity.role === "VIEWER"
     ? visitRows.map((visit) => ({ ...visit, phone: maskedPhone(visit.phone), signaturePath: null }))
     : visitRows;
   return Response.json({
+    report: {monthly,total:monthly.reduce((sum,row)=>sum+row.count,0),page},
     identity: auth.identity,
     serverTime: time,
     stats: Object.fromEntries(Object.entries(summaryRows[0] || {}).map(([key,value])=>[key,Math.round(Number(value || 0))])),

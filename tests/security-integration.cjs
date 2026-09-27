@@ -217,6 +217,17 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  const cleanup=route('admin/cleanup');
  const snapshot=await (await cleanup.GET()).json();assert.ok(snapshot.ids.length>1);
  const keep=snapshot.ids.pop(),targets=snapshot.ids;
+ sql.prepare("UPDATE visits SET visit_date='2026-01-31' WHERE id=?").run(targets[0]);
+ sql.prepare("UPDATE visits SET visit_date='2026-02-01' WHERE id=?").run(keep);
+ const periodIds=await (await cleanup.GET(request('admin/cleanup?from=2026-01-01&to=2026-01-31'))).json();
+ assert.ok(periodIds.ids.includes(targets[0]));assert.ok(!periodIds.ids.includes(keep));
+ assert.equal((await cleanup.GET(request('admin/cleanup?from=2026-02-30&to=2026-03-01'))).status,422);
+ res=await cleanup.POST(request('admin/cleanup',{ids:[keep],confirmation:'HAPUS PERIODE',from:'2026-01-01',to:'2026-01-31'}));assert.equal(res.status,409);
+ const monthlyReport=await (await route('admin/overview').GET(request('admin/overview?from=2026-01-01&to=2026-01-31'))).json();
+ assert.ok(monthlyReport.visits.some(v=>v.id===targets[0]));assert.ok(!monthlyReport.visits.some(v=>v.id===keep));assert.ok(monthlyReport.report.total>=1);
+ assert.equal((await route('admin/overview').GET(request('admin/overview?from=invalid&to=2026-01-31'))).status,422);
+ const periodHelper=require(root+'/lib/report-period.ts');assert.equal(periodHelper.shiftMonth('2026-01',-1),'2025-12');assert.equal(periodHelper.monthRange('2024-02','2024-02').to,'2024-02-29');
+ console.log('PASS monthly report boundaries, leap year, invalid periods and out-of-period deletion protection');
  const accountsBefore=sql.prepare('SELECT COUNT(*) n FROM users').get().n;
  res=await cleanup.POST(request('admin/cleanup',{ids:targets,confirmation:'wrong'}));assert.equal(res.status,422);
  const removeObject=env.BUCKET.delete;env.BUCKET.delete=async()=>{throw new Error('storage unavailable')};

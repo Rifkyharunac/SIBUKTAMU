@@ -1,4 +1,5 @@
 "use client";
+import {monthRange,monthLabel,shiftMonth,validPeriod} from '@/lib/report-period';
 import { CleanupTestData } from '@/components/cleanup-test-data';
 import { AdminApp } from "@/components/admin-app";
 
@@ -96,8 +97,8 @@ type Overview = {
   unreadNotifications: number;
   analytics: {daily:{date:string;count:number}[];byService:{name:string;count:number}[];byType:{name:string;count:number}[]};
   identity: AdminIdentity;
-  serverTime: { timestamp: string };
-  stats: { today: number; month: number; active: number; waiting: number; serving: number; completed: number; averageDuration: number };
+  serverTime: { timestamp: string; dateKey: string };
+  stats: { today: number; month: number; previousMonth: number; active: number; waiting: number; serving: number; completed: number; averageDuration: number };
   visits: Visit[]; departments: Department[]; services: Service[]; employees: Employee[]; users: AdminUser[];
   notifications: Notification[]; notificationConfig: { whatsappConfigured: boolean }; auditLogs: Audit[]; settings: Setting[];
 };
@@ -271,6 +272,7 @@ function DashboardSection({ data, selectVisit }: { data: Overview; selectVisit: 
       </div>
     </div>
     <div className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6">{stats.map((stat) => <StatCard key={stat.label} {...stat} />)}</div>
+    <Panel title="Perbandingan kunjungan bulanan" subtitle="Bulan ini dihitung sampai saat ini; bulan lalu mencakup satu bulan penuh."><div className="grid gap-4 sm:grid-cols-2">{[{label:monthLabel(shiftMonth(data.serverTime.dateKey.slice(0,7),-1)),value:data.stats.previousMonth},{label:monthLabel(data.serverTime.dateKey.slice(0,7)),value:data.stats.month}].map(item=><div key={item.label} className="rounded-xl bg-sky-50 p-5"><p className="text-sm font-semibold text-sky-800">{item.label}</p><p className="mt-2 text-3xl font-bold text-sky-950">{item.value} <span className="text-sm font-normal">kunjungan</span></p></div>)}</div></Panel>
     <div className="grid gap-6 xl:grid-cols-[1.25fr_0.85fr_0.75fr]">
       <Panel title="Kunjungan 7 hari terakhir" subtitle="Pola kedatangan yang tercatat di sistem">
         <div className="flex h-56 items-end gap-3 pt-6">{lastSeven.map((item) => <div key={item.key} className="flex flex-1 flex-col items-center gap-2"><span className="text-xs font-bold text-slate-600">{item.count}</span><div className="w-full max-w-12 rounded-t-lg bg-[#0369a1] transition" style={{ height: `${Math.max(8, (item.count / max) * 150)}px` }} /><span className="text-xs text-slate-500">{item.label}</span></div>)}</div>
@@ -466,10 +468,17 @@ function ReportSection({ data, selectVisit }: { data: Overview; selectVisit: (vi
       link.href=url;link.download=`buku-tamu-${from}-${to}.${format}`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
     } catch(error) {setExportError(error instanceof Error?error.message:"Laporan belum dapat dibuat.");} finally {setExporting("");}
   }
-  const filtered = data.visits.filter((visit) => {
-    const date = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Makassar",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(visit.checkInAt));
-    return date >= from && date <= to && (!department || visit.departmentId === department);
-  });
+  const [page,setPage]=useState(0),[revision,setRevision]=useState(0);
+  const [report,setReport]=useState<{visits:Visit[];report:{total:number;monthly:{month:string;count:number}[]}}|null>(null);
+  const [loading,setLoading]=useState(false),[reportError,setReportError]=useState('');
+  useEffect(()=>{setPage(0);},[from,to,department]);
+  useEffect(()=>{let stale=false;setReport(null);setReportError('');if(!validPeriod(from,to)){setReportError('Pilih periode yang valid.');return;}setLoading(true);
+    apiRequest<{visits:Visit[];report:{total:number;monthly:{month:string;count:number}[]}}>('/api/admin/overview?'+new URLSearchParams({from,to,department,page:String(page)})).then(value=>{if(!stale)setReport(value);}).catch(e=>{if(!stale)setReportError(e instanceof Error?e.message:'Data belum dapat dimuat.');}).finally(()=>{if(!stale)setLoading(false);});return()=>{stale=true;};
+  },[from,to,department,page,revision]);
+  const filtered=report?.visits||[];
+  function chooseMonths(start:string,end:string){if(!/^\d{4}-\d{2}$/.test(start)||!/^\d{4}-\d{2}$/.test(end))return;const range=monthRange(start,end);setFrom(range.from);setTo(range.to);}
+  const monthlyRows:{month:string;count:number}[]=[];
+  if(report&&validPeriod(from,to)){for(let month=from.slice(0,7);month<=to.slice(0,7)&&monthlyRows.length<1200;month=shiftMonth(month,1))monthlyRows.push({month,count:report.report.monthly.find(row=>row.month===month)?.count||0});}
   const officialDepartments = data.departments.filter((item) => item.isActive);
   const baseParams = { from, to, ...(department ? { department } : {}) };
   const excelUrl = `/api/admin/export?${new URLSearchParams({ ...baseParams, format: "xlsx" })}`;
@@ -477,11 +486,17 @@ function ReportSection({ data, selectVisit }: { data: Overview; selectVisit: (vi
   return <div className="space-y-6">
     <Panel title="Laporan kunjungan dinas" subtitle="Kop berlogo, periode, tabel lengkap, total kunjungan, dan ruang pengesahan. Maksimal 2.000 kunjungan per ekspor.">
       <div className="mb-5 grid gap-3 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 sm:grid-cols-3"><div><p className="text-xs font-bold uppercase tracking-wider text-sky-700">Instansi</p><p className="mt-1 font-bold">Disnakertrans Provinsi Sulawesi Tengah</p></div><div><p className="text-xs font-bold uppercase tracking-wider text-sky-700">Lingkup</p><p className="mt-1 font-bold">Bidang, UPT, Sekretariat & Penerima Tamu</p></div><div><p className="text-xs font-bold uppercase tracking-wider text-sky-700">Orientasi PDF</p><p className="mt-1 font-bold">A4 Landscape</p></div></div>
+      <div className="mb-4 flex flex-wrap gap-2">{[1,2,3,6,12].map(n=><Button key={n} variant="outline" onClick={()=>chooseMonths(shiftMonth(today.slice(0,7),1-n),today.slice(0,7))}>{n===1?'Bulan ini':`${n} bulan terakhir`}</Button>)}<Button variant="outline" onClick={()=>chooseMonths(shiftMonth(today.slice(0,7),-1),shiftMonth(today.slice(0,7),-1))}>Bulan lalu</Button></div>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2"><FormField label="Dari bulan"><Input type="month" value={from.slice(0,7)} onChange={e=>chooseMonths(e.target.value,to.slice(0,7))}/></FormField><FormField label="Sampai bulan"><Input type="month" value={to.slice(0,7)} onChange={e=>chooseMonths(from.slice(0,7),e.target.value)}/></FormField></div>
       <div className="grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[180px_180px_minmax(240px,1fr)_auto_auto]"><FormField label="Tanggal Mulai"><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></FormField><FormField label="Tanggal Akhir"><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></FormField><FormField label="Bidang Layanan"><NativeSelect className="w-full" value={department} onChange={(e) => setDepartment(e.target.value)}><NativeSelectOption value="">Semua bidang resmi</NativeSelectOption>{officialDepartments.map((item) => <NativeSelectOption key={item.id} value={item.id}>{item.name}</NativeSelectOption>)}</NativeSelect></FormField><Button disabled={!!exporting} onClick={()=>downloadReport("xlsx")} variant="outline" className="h-11"><FileDown />{exporting==="xlsx"?"Membuat Excel…":"Unduh Excel"}</Button><Button disabled={!!exporting} onClick={()=>downloadReport("pdf")} className="h-11 bg-[#0369a1] hover:bg-[#075985]"><FileText />{exporting==="pdf"?"Membuat PDF…":"PDF Landscape"}</Button></div>
     </Panel>
     {exportError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{exportError}</p>}
-    <p className="text-sm text-slate-500">Pratinjau menampilkan maksimal 200 kunjungan terbaru. Ekspor mengambil seluruh data dalam periode pilihan. Isi pejabat pengesahan pada Pengaturan sebelum mencetak.</p>
-    <div className="print-area"><Panel title="Pratinjau data kunjungan" subtitle={`Periode ${from} sampai ${to} · ${filtered.length} kunjungan`}><VisitList visits={filtered} selectVisit={selectVisit} /></Panel></div>
+    <p className="text-sm text-slate-500">Pilihan beberapa bulan mencakup bulan ini. Gunakan Dari bulan dan Sampai bulan untuk periode lain. Daftar ditampilkan 200 kunjungan per halaman; rekap menghitung seluruh data sesuai filter.</p>
+    {loading&&<p role="status">Memuat laporan…</p>}{reportError&&<p role="alert" className="text-rose-700">{reportError}</p>}
+    {report&&<Panel title={`Rekap bulanan · ${report.report.total} kunjungan`} subtitle="Jumlah berdasarkan tanggal kedatangan (WITA) dan bidang yang dipilih."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{monthlyRows.map(row=><div key={row.month} className="flex justify-between gap-4 rounded-xl bg-sky-50 p-4"><span>{monthLabel(row.month)}</span><strong>{row.count}</strong></div>)}</div></Panel>}
+    <div className="print-area"><Panel title="Pratinjau data kunjungan" subtitle={`Periode ${from} sampai ${to} · ${report?.report.total||0} kunjungan`}><VisitList visits={filtered} selectVisit={selectVisit} /></Panel></div>
+    {report&&<div className="flex flex-wrap items-center gap-3"><Button variant="outline" disabled={page===0||loading} onClick={()=>setPage(p=>p-1)}>Sebelumnya</Button><span>Halaman {page+1} dari {Math.max(1,Math.ceil(report.report.total/200))}</span><Button variant="outline" disabled={(page+1)*200>=report.report.total||loading} onClick={()=>setPage(p=>p+1)}>Berikutnya</Button></div>}
+    {data.identity.role==='SUPER_ADMIN'&&validPeriod(from,to)&&<CleanupTestData key={`${from}:${to}:${department}`} period={{from,to,department}} onDeleted={()=>{setPage(0);setRevision(r=>r+1);}}/>}
   </div>;
 }
 
