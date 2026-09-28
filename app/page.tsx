@@ -33,7 +33,6 @@ export default function Home() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
           <BrandMark />
           <div className="flex items-center gap-2">
-            <Link href="/checkout" className="hidden text-sm font-semibold text-slate-600 hover:text-[#0369a1] sm:block">Selesaikan layanan</Link>
             <Button asChild variant="outline" size="sm"><Link href="/admin/login">Masuk Petugas</Link></Button>
           </div>
         </div>

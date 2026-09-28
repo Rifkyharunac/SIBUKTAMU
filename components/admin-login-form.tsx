@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { apiRequest } from "@/lib/api-client";
-import { Eye, EyeOff, LoaderCircle, LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, LoaderCircle, LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ export function AdminLoginForm({ returnTo }: { returnTo: string }) {
         <p className="relative mt-16 text-xs font-semibold text-sky-200/70">Dinas Tenaga Kerja dan Transmigrasi<br />Provinsi Sulawesi Tengah</p>
       </div>
       <div className="p-6 sm:p-10 lg:p-12">
+        <Button asChild variant="outline" className="mb-6 min-h-11"><Link href="/"><ArrowLeft aria-hidden="true" />Kembali ke beranda</Link></Button>
         <div className="lg:hidden"><BrandMark /></div>
         <p className="mt-8 text-xs font-extrabold uppercase tracking-[0.2em] text-[#0369a1] lg:mt-0">Administrasi Internal</p>
         <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">Masuk sebagai Petugas</h2>
