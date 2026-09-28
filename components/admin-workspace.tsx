@@ -1,6 +1,7 @@
 "use client";
 import {monthRange,monthLabel,shiftMonth,validPeriod} from '@/lib/report-period';
 import { CleanupTestData } from '@/components/cleanup-test-data';
+import {DeleteInactiveButton} from "@/components/delete-inactive-button";
 import {DeleteMasterButton} from "@/components/delete-master-button";
 import { AdminApp } from "@/components/admin-app";
 
@@ -161,7 +162,8 @@ export function AdminWorkspace({ section, initialIdentity, focusedVisitId }: { s
   }, [load]);
   useEffect(() => {
     const interval = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 15_000);
-    return () => window.clearInterval(interval);
+    const refresh=()=>{void load(true);};window.addEventListener("sibuktamu-master-refresh",refresh);
+    return () => {window.clearInterval(interval);window.removeEventListener("sibuktamu-master-refresh",refresh);};
   }, [load]);
 
   const mutationPending = useRef(false);
@@ -368,7 +370,7 @@ function ServiceSection({ data, action }: { data: Overview; action: (payload: Re
       <p role="status" className="mt-4 text-sm text-slate-600">Menampilkan {visibleServices.length} dari {data.services.length} layanan · {selectedDepartment?.name ?? "Semua bidang"} · {serviceStatus === "all" ? "Semua status" : serviceStatus === "active" ? "Aktif" : "Nonaktif"}</p>
     </Panel>
     <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_460px]">
-    <Panel title={`${visibleServices.length} Layanan Ditampilkan`} subtitle="Pilih Ubah Data untuk mengedit layanan. Filter tetap tersimpan setelah perubahan disimpan."><div className="grid max-h-[36rem] gap-3 overflow-y-auto pr-1">{visibleServices.length ? visibleServices.map((item) => <MasterCard key={item.id} title={item.name} description={`${item.category} · ${item.departmentName}`} active={item.isActive} onEdit={() => {
+    <Panel title={`${visibleServices.length} Layanan Ditampilkan`} subtitle="Pilih Ubah Data untuk mengedit layanan. Filter tetap tersimpan setelah perubahan disimpan."><DeleteInactiveButton ids={data.services.filter(item=>!item.isActive).map(item=>item.id)} kind="services" onDone={()=>{resetForm();window.dispatchEvent(new Event("sibuktamu-master-refresh"));}}/><div className="grid max-h-[36rem] gap-3 overflow-y-auto pr-1">{visibleServices.length ? visibleServices.map((item) => <MasterCard key={item.id} title={item.name} description={`${item.category} · ${item.departmentName}`} active={item.isActive} onEdit={() => {
       setForm({ ...item, whatsappNumber: item.whatsappNumber ?? "" });
       editorRef.current?.scrollIntoView({ block: "start" });
       editorRef.current?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
@@ -420,6 +422,7 @@ function UserSection({ data, action }: { data: Overview; action: (payload: Recor
       <CheckLabel label="Akun pengguna aktif" checked={form.isActive} setChecked={(value) => setForm({ ...form, isActive: value })} />
     </Editor>
     <Panel title={`${data.users.length} Pengguna Terdaftar`} subtitle="Daftar akun petugas beserta peran dan status aksesnya.">
+      <DeleteInactiveButton ids={data.users.filter(item=>!item.isActive&&item.id!==data.identity.id).map(item=>item.id)} kind="users" onDone={()=>{setForm(empty);window.dispatchEvent(new Event("sibuktamu-master-refresh"));}}/>
       <div className="grid gap-3">{data.users.length ? data.users.map((item) => <MasterCard key={item.id} title={item.name} description={`${item.username ? `@${item.username}` : "Login belum dibuat"} · ${item.email} · ${item.role}${item.mustChangePassword ? " · Wajib ganti sandi" : ""}`} active={item.isActive} onEdit={() => setForm({ id: item.id, name: item.name, email: item.email, username: item.username ?? "", temporaryPassword: "", roleId: item.roleId, departmentId: item.departmentId ?? "", whatsappNumber: item.whatsappNumber ?? "", isActive: item.isActive })} onDelete={!item.isActive&&item.id!==data.identity.id?async()=>{const ok=await action({action:'DELETE_USER',id:item.id,confirmation:'HAPUS'},'Pengguna dihapus dan akses login dicabut.');if(ok&&form.id===item.id)setForm(empty);return ok;}:undefined} onToggle={() => action({ action: "SAVE_USER", ...item, username: item.username ?? "", temporaryPassword: "", isActive: !item.isActive })} />) : <EmptyState text="Belum ada pengguna terdaftar." />}</div>
     </Panel>
   </div>;

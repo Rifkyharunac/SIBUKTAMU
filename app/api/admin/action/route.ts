@@ -47,6 +47,17 @@ export async function POST(request: Request) {
   }
 
   try {
+    if(action==='DELETE_INACTIVE_USERS'||action==='DELETE_INACTIVE_SERVICES'){
+      if(identity.role!=='SUPER_ADMIN')return Response.json({error:'Hanya Admin yang dapat menghapus.'},{status:403});
+      if(payload.confirmation!=='HAPUS SEMUA NONAKTIF'||!Array.isArray(payload.ids)||payload.ids.length>100||payload.ids.some(id=>typeof id!=='string'||id.length>100))return Response.json({error:'Konfirmasi dan daftar data tidak valid.'},{status:422});
+      const ids=JSON.stringify([...new Set(payload.ids)]),table=action==='DELETE_INACTIVE_USERS'?'users':'services',now=new Date().toISOString();
+      const statements=[getD1().prepare(`UPDATE ${table} SET deleted_at=?,updated_at=? WHERE id IN (SELECT value FROM json_each(?)) AND is_active=0 AND deleted_at IS NULL AND id!=?`).bind(now,now,ids,identity.id)];
+      if(table==='users')for(const child of ['admin_sessions','admin_push_subscriptions','admin_credentials'])statements.push(getD1().prepare(`DELETE FROM ${child} WHERE user_id IN (SELECT id FROM users WHERE id IN (SELECT value FROM json_each(?)) AND deleted_at=? AND is_active=0 AND id!=?)`).bind(ids,now,identity.id));
+      const result=await getD1().batch(statements);
+      const deleted=result[0].meta.changes||0;
+      await writeAudit({userId:identity.id,action,entity:table,newValue:{deleted},ipAddress});
+      return Response.json({success:true,deleted});
+    }
     if(action==='DELETE_USER'||action==='DELETE_SERVICE'){
       if(identity.role!=='SUPER_ADMIN')return Response.json({error:'Hanya Admin yang dapat menghapus.'},{status:403});
       const id=String(payload.id||''),table=action==='DELETE_USER'?'users':'services';

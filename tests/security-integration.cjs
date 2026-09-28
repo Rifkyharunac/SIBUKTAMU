@@ -227,6 +227,14 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  assert.ok(!afterDelete.services.some(v=>v.id===usedService));assert.ok(!afterDelete.users.some(v=>v.id==='delete-test'));assert.ok(afterDelete.visits.some(v=>v.serviceId===usedService));
  res=await deleteAction.POST(request('admin/action',{action:'SAVE_SERVICE',id:usedService}));assert.equal(res.status,409);
  console.log('PASS inactive user deletion, active user protection, service removal, history preservation and resurrection prevention');
+ sql.prepare("INSERT INTO users(id,email,name,role_id,is_active) VALUES ('bulk-inactive','bulk@example.invalid','Bulk Test','role-viewer',0)").run();
+ sql.prepare("INSERT INTO services(id,department_id,name,category,is_active) SELECT 'bulk-service',department_id,'Bulk Test Service','Umum',0 FROM services LIMIT 1").run();
+ res=await deleteAction.POST(request('admin/action',{action:'DELETE_INACTIVE_USERS',ids:['bulk-inactive',user],confirmation:'wrong'}));assert.equal(res.status,422);
+ res=await deleteAction.POST(request('admin/action',{action:'DELETE_INACTIVE_USERS',ids:['bulk-inactive',user],confirmation:'HAPUS SEMUA NONAKTIF'}));assert.equal(res.status,200);assert.equal((await res.json()).deleted,1);assert.equal(sql.prepare('SELECT deleted_at FROM users WHERE id=?').get(user).deleted_at,null);
+ res=await deleteAction.POST(request('admin/action',{action:'DELETE_INACTIVE_USERS',ids:['bulk-inactive'],confirmation:'HAPUS SEMUA NONAKTIF'}));assert.equal((await res.json()).deleted,0);
+ res=await deleteAction.POST(request('admin/action',{action:'DELETE_INACTIVE_SERVICES',ids:['bulk-service'],confirmation:'HAPUS SEMUA NONAKTIF'}));assert.equal(res.status,200);assert.equal((await res.json()).deleted,1);
+ assert.ok(sql.prepare("SELECT deleted_at FROM services WHERE id='bulk-service'").get().deleted_at);
+ console.log('PASS bulk inactive deletion, confirmation, active account protection and idempotent retries');
  const cleanup=route('admin/cleanup');
  const snapshot=await (await cleanup.GET()).json();assert.ok(snapshot.ids.length>1);
  const keep=snapshot.ids.pop(),targets=snapshot.ids;
