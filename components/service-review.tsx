@@ -25,7 +25,7 @@ export function ServiceReview({visitCode, token, phone, surveyToken}: {visitCode
     if (!rating || sending.current) return;
     sending.current=true;setBusy(true);setError("");
     try {
-      const result = await apiRequest<{success:boolean}>("/api/checkout", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visitCode,token,phone,surveyToken,rating,feedback})});
+      const result = await apiRequest<{success:boolean}>("/api/review", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visitCode,token,phone,surveyToken,rating,feedback})});
       if (!result.success) throw new Error("Penilaian belum tersimpan. Silakan coba kembali.");
       setSent(true);
     } catch (caught) {setError(caught instanceof Error ? caught.message : "Penilaian belum terkirim.");}
@@ -34,7 +34,7 @@ export function ServiceReview({visitCode, token, phone, surveyToken}: {visitCode
   return <section className="my-5 rounded-2xl border border-sky-100 bg-white p-5 text-left sm:p-6" aria-labelledby={`${id}-title`}>
     <h2 id={`${id}-title`} className="text-lg font-bold text-slate-900">Bagaimana pengalaman pelayanan Anda?</h2>
     {sent ? <p role="status" className="mt-4 flex items-center gap-2 font-semibold text-sky-800"><CheckCircle2 className="size-5 shrink-0" />Terima kasih! Penilaian Anda sudah tersimpan.</p> : <>
-      <p className="mt-2 text-sm leading-6 text-slate-600">Pilih ekspresi yang sesuai dengan kepuasan Anda. Penilaian ini opsional; layanan sudah tercatat selesai.</p>
+      <p className="mt-2 text-sm leading-6 text-slate-600">Pilih ekspresi yang sesuai dengan kepuasan Anda. Penilaian dan tanggapan bersifat opsional. Buku tamu Anda sudah tersimpan.</p>
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4" role="group" aria-label="Tingkat kepuasan pelayanan">{reactions.map(item=><button type="button" key={item.value} disabled={busy} aria-pressed={rating===item.value} onClick={()=>setRating(item.value)} className={`flex min-h-28 flex-col items-center justify-center gap-3 rounded-2xl border-2 p-3 text-center transition disabled:opacity-60 ${rating===item.value ? "border-sky-600 bg-sky-50 text-sky-950 shadow-sm" : "border-slate-100 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50"}`}><span aria-hidden="true" className="text-4xl">{item.emoji}</span><span className="text-sm font-semibold">{item.label}</span></button>)}</div>
       {rating>0 && <div className="mt-5"><label htmlFor={`${id}-feedback`} className="text-sm font-semibold">Saran atau masukan (opsional)</label><Textarea id={`${id}-feedback`} disabled={busy} maxLength={1000} className="mt-2" value={feedback} onChange={event=>setFeedback(event.target.value)} placeholder="Ceritakan pengalaman Anda" /><Button className="mt-3 h-11" disabled={busy} onClick={()=>void submit()}>{busy && <LoaderCircle className="animate-spin" />}Kirim penilaian</Button></div>}
       {error && <p role="alert" className="mt-3 text-sm text-rose-700">{error}</p>}

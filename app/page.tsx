@@ -11,7 +11,6 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
-import { ActiveVisitRedirect } from "@/components/active-visit-redirect";
 import { Button } from "@/components/ui/button";
 
 const officialDepartments = [
@@ -28,7 +27,6 @@ const officialDepartments = [
 export default function Home() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#f0f9ff] text-slate-950">
-      <ActiveVisitRedirect />
       <header className="relative z-30 border-b border-sky-900/10 bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
           <BrandMark />
@@ -63,7 +61,6 @@ export default function Home() {
             <p className="mt-6 max-w-xl text-lg leading-8 text-sky-50/90">Buku tamu digital Dinas Tenaga Kerja dan Transmigrasi Provinsi Sulawesi Tengah. Sistem mengarahkan kunjungan ke bidang yang tepat tanpa akun tamu.</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild className="h-13 bg-[#0369a1] px-6 text-base shadow-lg shadow-sky-900/15 hover:bg-[#075985]"><Link href="/kunjungan"><QrCode />Isi buku tamu<ArrowRight /></Link></Button>
-              <Button asChild variant="outline" className="h-13 border-white/35 bg-white/12 px-6 text-base text-white backdrop-blur-md hover:bg-white/20 hover:text-white"><Link href="/checkout"><LogOut />Selesaikan layanan</Link></Button>
             </div>
             <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-sky-50/90">
               <span className="flex items-center gap-2"><CheckCircle2 className="size-4 text-sky-200" />Tanpa login tamu</span>
@@ -80,7 +77,7 @@ export default function Home() {
               <ol className="my-6 space-y-5">{[
                 ["Isi identitas", "Nama, asal, dan nomor HP yang dapat dihubungi."],
                 ["Pilih layanan", "Tentukan keperluan dan bubuhkan tanda tangan."],
-                ["Selesaikan kunjungan", "Pilih nama Anda pada menu Selesaikan layanan setelah urusan tuntas."],
+                ["Berikan penilaian", "Setelah data tersimpan, pilih emot penilaian dan tulis tanggapan jika berkenan."],
               ].map(([title,desc],i)=><li key={title} className="flex gap-4"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-sky-50 font-black text-sky-800 shadow-[0_3px_0_#bae6fd]">{i+1}</span><div><h3 className="font-bold text-slate-900">{title}</h3><p className="mt-1 text-sm leading-5 text-slate-500">{desc}</p></div></li>)}</ol>
               <Button asChild className="h-13 w-full rounded-xl bg-[#0369a1] text-base shadow-[0_4px_0_#075985] hover:bg-[#075985]"><Link href="/kunjungan">Mulai isi buku tamu<ArrowRight /></Link></Button>
               <p className="mt-5 text-center text-xs leading-5 text-slate-500">Butuh bantuan mengisi? Silakan hubungi petugas penerima tamu.</p>

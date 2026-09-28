@@ -60,10 +60,16 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  res=await route('visits').POST(request('visits',{visitorName:'Test Visitor',visitorType:'Pribadi / Masyarakat',phone:'081234567890',serviceId:otherService.id,purpose:customPurpose,signature,consent:true}));assert.equal(res.status,201,await res.clone().text());const visit=(await res.json()).visit;assert.equal(visit.checkoutToken.length,64);assert.equal(visit.serviceName,customPurpose);assert.equal(sql.prepare('SELECT purpose FROM visits WHERE visit_code=?').get(visit.visitCode).purpose,customPurpose);assert.equal(res.headers.get('X-Notification-Visit-Id')?.length,36);console.log('PASS official catalog, custom purpose submission and notification queue');
  const notificationId=sql.prepare('SELECT id FROM whatsapp_notification_logs WHERE visit_id=?').get(visit.id).id;
  const retired=await route('admin/action').POST(request('admin/action',{action:'RETRY_WHATSAPP',id:notificationId}));assert.equal(retired.status,410);
- res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode}));assert.equal(res.status,403);
- res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,token:'f'.repeat(64)}));assert.equal(res.status,403);
- res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,token:visit.checkoutToken}));assert.equal(res.status,200,await res.clone().text());
- res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,token:visit.checkoutToken}));assert.equal((await res.json()).alreadyCompleted,true);console.log('PASS private checkout and repeated completion');
+ res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode}));assert.equal(res.status,410);
+ res=await route('review').POST(request('review',{visitCode:visit.visitCode,token:'f'.repeat(64),rating:4}));assert.equal(res.status,403);
+ res=await route('review').POST(request('review',{visitCode:visit.visitCode,token:visit.checkoutToken,rating:4}));assert.equal(res.status,200);
+ assert.equal(sql.prepare('SELECT check_out_at FROM visits WHERE id=?').get(visit.id).check_out_at,null,'review must not invent a checkout time');
+ res=await route('review').POST(request('review',{visitCode:visit.visitCode,token:visit.checkoutToken,rating:3,feedback:'Mudah digunakan'}));assert.equal(res.status,200);
+ assert.equal(sql.prepare('SELECT COUNT(*) n FROM service_surveys WHERE visit_id=?').get(visit.id).n,1);
+ res=await route('checkout').POST();assert.equal(res.status,410);
+ // Preserve a completed fixture for administrator/report checks below.
+ sql.prepare("UPDATE visits SET status='SELESAI',check_out_at=CURRENT_TIMESTAMP WHERE id=?").run(visit.id);
+ console.log('PASS immediate optional review, private token, repeat review and no fabricated checkout');
  // All eligible accounts, normalized once; unrelated/inactive users must not receive guest data.
  sql.prepare("UPDATE users SET whatsapp_number='081111111112' WHERE role_id='role-super'").run();
  const addAdmin=sql.prepare('INSERT INTO users (id,name,email,role_id,department_id,whatsapp_number,is_active) VALUES (?,?,?,?,?,?,?)');
@@ -144,7 +150,7 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  assert.equal(sql.prepare('SELECT is_active FROM services WHERE id=?').get(service.id).is_active,0);
  res=await route('public/catalog').GET();assert.ok(!(await res.json()).services.some(v=>v.id===service.id));
  res=await route('admin/action').POST(request('admin/action',{action:'UPDATE_VISIT_STATUS',visitId:row.id,status:'MENUNGGU'}));assert.equal(res.status,422,'completed visits cannot reopen');
- res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,token:visit.checkoutToken,rating:4,feedback:'Test feedback'}));assert.equal(res.status,200);
+ res=await route('review').POST(request('review',{visitCode:visit.visitCode,token:visit.checkoutToken,rating:4,feedback:'Test feedback'}));assert.equal(res.status,200);
  await adminAction({action:'ARCHIVE_NOTIFICATION',id:'notice-0',archived:true});
  assert.ok(sql.prepare('SELECT archived_at FROM whatsapp_notification_logs WHERE id=?').get('notice-0').archived_at);
  await adminAction({action:'ARCHIVE_NOTIFICATION',id:'notice-0',archived:false});
@@ -171,43 +177,8 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  await adminAction({...recipientAccount,id:savedRecipient.id,temporaryPassword:'',whatsappNumber:''});
  storedRecipient=sql.prepare('SELECT whatsapp_number FROM users WHERE id=?').get(savedRecipient.id);assert.equal(storedRecipient.whatsapp_number,null);
  console.log('PASS legacy admin manages users, rejects invalid recipient numbers, normalizes valid numbers and allows opting out');
- // Public name checkout: bounded data, active-only listing, accurate completion and survey receipt.
- const directory=route('checkout/active');
- res=await directory.GET(request('checkout/active'));assert.equal(res.status,200,await res.clone().text());
- let listing=await res.json();assert.equal(listing.total,2);
- assert.ok(listing.visits.every(v=>Object.keys(v).sort().join(',')==='checkInAt,id,name,queueNumber,visitCode'));
- assert.ok(!listing.visits.some(v=>v.id===visit.id),'completed visit is hidden');
- res=await directory.GET(request('checkout/active?search=Routing'));assert.equal((await res.json()).total,1);
- res=await directory.GET(request('checkout/active?search=%25'));assert.equal((await res.json()).total,0,'wildcards treated literally');
- res=await directory.POST(request('checkout/active',{visitId:'invalid'}));assert.equal(res.status,422);
- const activeId=routedVisit.id;
- sql.prepare("UPDATE visits SET status='BATAL' WHERE id=?").run(activeId);
- res=await directory.POST(request('checkout/active',{visitId:activeId}));assert.equal(res.status,409);
- res=await directory.GET(request('checkout/active'));assert.equal((await res.json()).total,1);
- for(const status of ['BARU','MENUNGGU','DITERIMA','SEDANG_DILAYANI','DIALIHKAN']) {
-   sql.prepare('UPDATE visits SET status=? WHERE id=?').run(status,activeId);
-   res=await directory.GET(request('checkout/active?search=Routing'));assert.equal((await res.json()).total,1,status+' must remain available');
- }
- // Force a failure in the second batch statement: the preceding log must roll back.
- const rawAll=Statement.prototype.all;
- const logCount=()=>sql.prepare("SELECT COUNT(*) n FROM visit_status_logs WHERE visit_id=? AND to_status='SELESAI'").get(activeId).n;
- const logsBefore=logCount();
- try {
-   Statement.prototype.all=async function(){if(this.query.startsWith("UPDATE visits SET status='SELESAI'"))throw new Error('simulated database failure');return rawAll.call(this);};
-   res=await directory.POST(request('checkout/active',{visitId:activeId}));assert.equal(res.status,503);
- } finally {Statement.prototype.all=rawAll;}
- assert.equal(logCount(),logsBefore);assert.equal(sql.prepare('SELECT check_out_at FROM visits WHERE id=?').get(activeId).check_out_at,null);
- res=await directory.POST(request('checkout/active',{visitId:activeId}));assert.equal(res.status,200,await res.clone().text());const receipt=await res.json();
- assert.equal(receipt.success,true);assert.equal(receipt.surveyToken.length,64);assert.ok(!('checkoutTokenHash' in receipt));
- const ended=sql.prepare('SELECT status,check_out_at,duration_minutes FROM visits WHERE id=?').get(activeId);assert.equal(ended.status,'SELESAI');assert.ok(ended.check_out_at);assert.ok(ended.duration_minutes>=0);
- res=await directory.POST(request('checkout/active',{visitId:activeId}));assert.equal(res.status,409);assert.equal(logCount(),logsBefore+1);
- assert.equal(sql.prepare('SELECT check_out_at FROM visits WHERE id=?').get(activeId).check_out_at,ended.check_out_at);
- res=await directory.GET(request('checkout/active?search=Routing'));assert.equal((await res.json()).total,0);
- res=await route('checkout').POST(request('checkout',{visitCode:receipt.visitCode,surveyToken:receipt.surveyToken}));assert.equal(res.status,403,'survey receipt cannot authorize checkout or private status');
- res=await route('checkout').POST(request('checkout',{visitCode:receipt.visitCode,surveyToken:receipt.surveyToken,rating:4,feedback:'Baik'}));assert.equal(res.status,200);
- res=await route('checkout').POST(request('checkout',{visitCode:visit.visitCode,surveyToken:receipt.surveyToken,rating:4}));assert.equal(res.status,403,'receipt bound to one visit');
- res=await route('admin/overview').GET(request('admin/overview'));assert.equal((await res.json()).visits.find(v=>v.id===activeId).status,'SELESAI');
- console.log('PASS public checkout privacy, search, active statuses, cancellation, transactional rollback, repeat completion, dashboard and survey');
+ const directory=route('checkout/active');assert.equal((await directory.GET()).status,410);assert.equal((await directory.POST()).status,410);
+ console.log('PASS retired checkout directory does not disclose guest names');
  res=await route('admin/overview').GET(request('admin/overview?visitId='+visit.id));
  assert.deepEqual((await res.json()).visits.map(v=>v.id),[visit.id],'notification link fetches the requested visit directly');
  const {rateLimit}=require(root+'/lib/rate-limit.ts');for(let i=0;i<3;i++)await rateLimit(request('auth/login'),'test',3,900);res=await rateLimit(request('auth/login'),'test',3,900);assert.equal(res.status,429);console.log('PASS atomic request rate limit');

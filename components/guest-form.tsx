@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { needsPurpose, visitPurpose } from "@/lib/guest-purpose";
-import { saveActiveVisit } from "@/lib/active-visit";
+
 
 type Department = { id: string; name: string; code: string; description: string };
 type Service = {
@@ -186,13 +186,6 @@ export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_
         ...(kiosk ? { kiosk: "1" } : {}),
       });
       const resumePath = `/kunjungan/sukses/${encodeURIComponent(data.visit.visitCode)}?${params}#token=${data.visit.checkoutToken}`;
-      if (!kiosk) {
-        saveActiveVisit({
-          code: data.visit.visitCode,
-          resumePath,
-          savedAt: Date.now(),
-        });
-      }
       window.location.replace(resumePath);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Terjadi kendala. Silakan coba kembali.");
@@ -332,7 +325,7 @@ export function GuestForm({ source = "QR_TAMU", kiosk = false }: { source?: "QR_
                 <Checkbox className="mt-1 size-5" checked={form.consent} onCheckedChange={(checked) => patch("consent", checked === true)} />
                 <span>Saya menyetujui data ini digunakan untuk administrasi kunjungan dan pelayanan Disnakertrans Provinsi Sulawesi Tengah. <a href="/privacy" target="_blank" className="font-semibold text-[#0369a1] underline underline-offset-2">Kebijakan Privasi</a></span>
               </label>
-              <div className="flex items-center gap-2 text-xs text-slate-500"><ShieldCheck className="size-4 text-[#0369a1]" />Kami tidak meminta NIK atau foto identitas. Nama dan waktu kedatangan tampil di daftar Selesaikan layanan sampai kunjungan selesai.</div>
+              <div className="flex items-center gap-2 text-xs text-slate-500"><ShieldCheck className="size-4 text-[#0369a1]" />Kami tidak meminta NIK atau foto identitas.</div>
             </div>
           )}
 

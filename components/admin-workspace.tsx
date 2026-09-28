@@ -256,7 +256,6 @@ function DashboardSection({ data, selectVisit }: { data: Overview; selectVisit: 
     { label: "Sedang Dilayani", value: data.stats.serving, icon: Activity, tone: "violet" },
     { label: "Selesai Hari Ini", value: data.stats.completed, icon: CheckCircle2, tone: "blue" },
     { label: "Total Bulan Ini", value: data.stats.month, icon: BarChart3, tone: "emerald" },
-    { label: "Rata-rata Durasi", value: `${data.stats.averageDuration} mnt`, icon: Clock3, tone: "slate" },
   ];
   const lastSeven = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(new Date(data.serverTime.timestamp).getTime() - (6 - index) * 86_400_000);
@@ -274,7 +273,7 @@ function DashboardSection({ data, selectVisit }: { data: Overview; selectVisit: 
         <div className="w-fit rounded-xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur"><p className="text-[10px] font-extrabold uppercase tracking-wider text-sky-200">Tamu di Kantor</p><p className="mt-1 text-2xl font-black">{data.stats.active} <span className="text-sm font-semibold text-sky-100">orang</span></p></div>
       </div>
     </div>
-    <div className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6">{stats.map((stat) => <StatCard key={stat.label} {...stat} />)}</div>
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-5">{stats.map((stat) => <StatCard key={stat.label} {...stat} />)}</div>
     <Panel title="Perbandingan kunjungan bulanan" subtitle="Bulan ini dihitung sampai saat ini; bulan lalu mencakup satu bulan penuh."><div className="grid gap-4 sm:grid-cols-2">{[{label:monthLabel(shiftMonth(data.serverTime.dateKey.slice(0,7),-1)),value:data.stats.previousMonth},{label:monthLabel(data.serverTime.dateKey.slice(0,7)),value:data.stats.month}].map(item=><div key={item.label} className="rounded-xl bg-sky-50 p-5"><p className="text-sm font-semibold text-sky-800">{item.label}</p><p className="mt-2 text-3xl font-bold text-sky-950">{item.value} <span className="text-sm font-normal">kunjungan</span></p></div>)}</div></Panel>
     <div className="grid gap-6 xl:grid-cols-[1.25fr_0.85fr_0.75fr]">
       <Panel title="Kunjungan 7 hari terakhir" subtitle="Pola kedatangan yang tercatat di sistem">
@@ -429,10 +428,10 @@ function UserSection({ data, action }: { data: Overview; action: (payload: Recor
 }
 
 function QrSection() {
-  const [kind, setKind] = useState<"checkin" | "checkout">("checkin");
+  const kind = "checkin";
   const [dataUrl, setDataUrl] = useState("");
   const [svg, setSvg] = useState("");
-  const target = typeof window === "undefined" ? "" : `${window.location.origin}${kind === "checkin" ? "/kunjungan" : "/checkout"}`;
+  const target = typeof window === "undefined" ? "" : `${window.location.origin}/kunjungan`;
   useEffect(() => {
     if (!target) return;
     QRCode.toDataURL(target, { width: 720, margin: 2, errorCorrectionLevel: "H", color: { dark: "#0369a1", light: "#ffffff" } }).then(setDataUrl);
@@ -443,14 +442,14 @@ function QrSection() {
   return <div className="grid items-start gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
     <Panel title="Pengaturan QR Code" subtitle="Pilih kebutuhan poster lalu unduh dalam format siap cetak.">
       <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.12em] text-slate-500">Jenis Layanan</p>
-      <div className="space-y-2"><Button className={`h-11 w-full justify-start ${kind === "checkin" ? "bg-[#0369a1] hover:bg-[#075985]" : ""}`} variant={kind === "checkin" ? "default" : "outline"} onClick={() => setKind("checkin")}><QrCode />QR Check-in Tamu</Button><Button className={`h-11 w-full justify-start ${kind === "checkout" ? "bg-[#0369a1] hover:bg-[#075985]" : ""}`} variant={kind === "checkout" ? "default" : "outline"} onClick={() => setKind("checkout")}><LogOut />QR Check-out Tamu</Button></div>
+      <p className="font-semibold text-sky-800">QR Pengisian Buku Tamu</p>
       <div className="my-5 border-t border-slate-100" />
       <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.12em] text-slate-500">Unduh dan Cetak</p>
       <div className="space-y-2"><Button variant="outline" className="h-11 w-full justify-start" disabled={!dataUrl} onClick={() => download(dataUrl, `qr-${kind}-sibuktamu.png`)}><Download />Unduh PNG</Button><Button variant="outline" className="h-11 w-full justify-start" disabled={!svg} onClick={downloadSvg}><FileDown />Unduh SVG</Button><Button variant="outline" className="h-11 w-full justify-start" onClick={() => window.print()}><Printer />Cetak Poster A4</Button></div>
     </Panel>
     <div className="print-area mx-auto w-full max-w-[760px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-center shadow-[0_18px_55px_rgba(15,23,42,0.08)] print:rounded-none print:shadow-none">
       <div className="bg-[#0369a1] px-6 py-5 text-white"><p className="text-xs font-extrabold uppercase tracking-[0.18em] text-sky-200">Pemerintah Provinsi Sulawesi Tengah</p><p className="mt-1 text-lg font-black uppercase tracking-tight">Dinas Tenaga Kerja dan Transmigrasi</p></div>
-      <div className="p-4 sm:p-10"><p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#0369a1]">SIBUKTAMU</p><h2 className="mt-2 text-4xl font-black uppercase tracking-tight text-slate-950">Selamat Datang</h2><p className="mt-3 text-xl leading-8 text-slate-600">Pindai QR Code untuk<br /><strong className="text-slate-900">{kind === "checkin" ? "Mengisi Buku Tamu" : "Check-out Kunjungan"}</strong></p>{dataUrl ? <img src={dataUrl} alt={`QR ${kind}`} className="mx-auto my-7 aspect-square w-full max-w-72 rounded-xl border border-slate-100 p-2" /> : <LoaderCircle className="mx-auto my-20 animate-spin" />}<p className="break-all text-xs text-slate-400">{target}</p><p className="mt-7 font-extrabold uppercase tracking-[0.14em] text-[#0369a1]">Cepat · Mudah · Tanpa Registrasi</p></div>
+      <div className="p-4 sm:p-10"><p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#0369a1]">SIBUKTAMU</p><h2 className="mt-2 text-4xl font-black uppercase tracking-tight text-slate-950">Selamat Datang</h2><p className="mt-3 text-xl leading-8 text-slate-600">Pindai QR Code untuk<br /><strong className="text-slate-900">Mengisi Buku Tamu</strong></p>{dataUrl ? <img src={dataUrl} alt={`QR ${kind}`} className="mx-auto my-7 aspect-square w-full max-w-72 rounded-xl border border-slate-100 p-2" /> : <LoaderCircle className="mx-auto my-20 animate-spin" />}<p className="break-all text-xs text-slate-400">{target}</p><p className="mt-7 font-extrabold uppercase tracking-[0.14em] text-[#0369a1]">Cepat · Mudah · Tanpa Registrasi</p></div>
     </div>
   </div>;
 }
