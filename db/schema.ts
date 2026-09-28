@@ -35,6 +35,7 @@ export const departments = sqliteTable("departments", {
 export const services = sqliteTable(
   "services",
   {
+    deletedAt: text("deleted_at"),
     id: text("id").primaryKey(),
     departmentId: text("department_id")
       .notNull()
@@ -78,6 +79,7 @@ export const employees = sqliteTable(
 export const users = sqliteTable(
   "users",
   {
+    deletedAt: text("deleted_at"),
     id: text("id").primaryKey(),
     email: text("email").notNull().unique(),
     name: text("name").notNull(),

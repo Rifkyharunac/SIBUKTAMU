@@ -1,5 +1,5 @@
 import { and, or, eq, inArray, isNotNull, isNull } from "drizzle-orm";
-import { getDb } from "@/db";
+import { getD1, getDb } from "@/db";
 import {
   adminCredentials,
   adminSessions,
@@ -47,6 +47,24 @@ export async function POST(request: Request) {
   }
 
   try {
+    if(action==='DELETE_USER'||action==='DELETE_SERVICE'){
+      if(identity.role!=='SUPER_ADMIN')return Response.json({error:'Hanya Admin yang dapat menghapus.'},{status:403});
+      const id=String(payload.id||''),table=action==='DELETE_USER'?'users':'services';
+      if(payload.confirmation!=='HAPUS')return Response.json({error:'Konfirmasi penghapusan diperlukan.'},{status:422});
+      const item=await getD1().prepare(`SELECT id,is_active,deleted_at FROM ${table} WHERE id=?`).bind(id).first<{id:string;is_active:number;deleted_at:string|null}>();
+      if(!item)return Response.json({error:'Data tidak ditemukan.'},{status:404});
+      if(table==='users'&&(id===identity.id||item.is_active))return Response.json({error:'Nonaktifkan pengguna terlebih dahulu. Akun sendiri tidak dapat dihapus.'},{status:409});
+      if(item.deleted_at)return Response.json({success:true});
+      const statements=[getD1().prepare(`UPDATE ${table} SET is_active=0,deleted_at=?,updated_at=? WHERE id=?`).bind(new Date().toISOString(),new Date().toISOString(),id)];
+      if(table==='users'){
+        statements.push(getD1().prepare('DELETE FROM admin_sessions WHERE user_id=?').bind(id));
+        statements.push(getD1().prepare('DELETE FROM admin_push_subscriptions WHERE user_id=?').bind(id));
+        statements.push(getD1().prepare('DELETE FROM admin_credentials WHERE user_id=?').bind(id));
+      }
+      await getD1().batch(statements);
+      await writeAudit({userId:identity.id,action,entity:table,entityId:id,ipAddress});
+      return Response.json({success:true});
+    }
     if (action === "UPDATE_VISIT_STATUS") {
       const visitId = String(payload.visitId ?? "");
       const status = String(payload.status ?? "");
@@ -114,6 +132,8 @@ export async function POST(request: Request) {
     if (action === "SAVE_SERVICE") {
       if (identity.role !== "SUPER_ADMIN") return Response.json({ error: "Hanya Admin yang dapat mengubah layanan." }, { status: 403 });
       const id = String(payload.id || crypto.randomUUID());
+      const deleted=await getD1().prepare('SELECT deleted_at FROM services WHERE id=?').bind(id).first<{deleted_at:string|null}>();
+      if(deleted?.deleted_at)return Response.json({error:'Data sudah dihapus dan tidak dapat diaktifkan kembali.'},{status:409});
       const values = {
         name: String(payload.name ?? "").trim(), category: String(payload.category ?? "Umum").trim(),
         departmentId: String(payload.departmentId ?? ""), description: String(payload.description ?? "").trim(),
@@ -142,6 +162,8 @@ export async function POST(request: Request) {
     if (action === "SAVE_USER") {
       if (identity.role !== "SUPER_ADMIN") return Response.json({ error: "Hanya Admin yang dapat mengubah pengguna." }, { status: 403 });
       const id = String(payload.id || crypto.randomUUID());
+      const deleted=await getD1().prepare('SELECT deleted_at FROM users WHERE id=?').bind(id).first<{deleted_at:string|null}>();
+      if(deleted?.deleted_at)return Response.json({error:'Data sudah dihapus dan tidak dapat diaktifkan kembali.'},{status:409});
       const isNew = !payload.id;
       const username = String(payload.username ?? "").trim().toLowerCase();
       const temporaryPassword = String(payload.temporaryPassword ?? "");

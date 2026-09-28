@@ -1,5 +1,5 @@
 import {validPeriod,shiftMonth} from '@/lib/report-period';
-import { and, asc, count, desc, eq, gte, inArray, like, lte, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, like, lte, or, sql } from "drizzle-orm";
 import { whatsappConfiguration, type WhatsAppEnvironment } from "@/lib/whatsapp-provider";
 import { env } from "cloudflare:workers";
 import { getDb } from "@/db";
@@ -116,7 +116,7 @@ export async function GET(request: Request) {
       departmentId: services.departmentId, departmentName: departments.name, whatsappNumber: services.whatsappNumber,
       requiresPurpose: services.requiresPurpose, allowsEmployee: services.allowsEmployee,
       displayOrder: services.displayOrder, isActive: services.isActive,
-    }).from(services).innerJoin(departments, eq(services.departmentId, departments.id)).orderBy(asc(services.displayOrder)),
+    }).from(services).innerJoin(departments, eq(services.departmentId, departments.id)).where(isNull(services.deletedAt)).orderBy(asc(services.displayOrder)),
     db.select({
       id: employees.id, name: employees.name, position: employees.position, departmentId: employees.departmentId,
       departmentName: departments.name, isActive: employees.isActive,
@@ -126,7 +126,7 @@ export async function GET(request: Request) {
       roleName: roles.name, departmentId: users.departmentId, whatsappNumber: users.whatsappNumber,
       isActive: users.isActive, lastSeenAt: users.lastSeenAt, username: adminCredentials.username,
       mustChangePassword: adminCredentials.mustChangePassword,
-    }).from(users).innerJoin(roles, eq(users.roleId, roles.id)).leftJoin(adminCredentials, eq(adminCredentials.userId, users.id)).orderBy(asc(users.name)),
+    }).from(users).innerJoin(roles, eq(users.roleId, roles.id)).leftJoin(adminCredentials, eq(adminCredentials.userId, users.id)).where(isNull(users.deletedAt)).orderBy(asc(users.name)),
     db.select({
       id: whatsappNotificationLogs.id,
       eventType:whatsappNotificationLogs.eventType,
