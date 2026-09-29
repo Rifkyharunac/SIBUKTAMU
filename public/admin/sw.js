@@ -13,7 +13,7 @@ self.addEventListener('push',event=>{
   let data={};try{data=event.data?.json()||{};}catch{}
   await self.registration.showNotification(data.title||'Pemberitahuan SIBUKTAMU',{
    body:typeof data.body==='string'?data.body:'Buka SIBUKTAMU untuk melihat rincian kunjungan.',icon:'/sibuktamu-icon-192.png',badge:'/sibuktamu-icon-192.png',
-   silent:false,vibrate:[200,100,200],renotify:true,
+   silent:false,requireInteraction:true,vibrate:[200,100,200],renotify:true,
    tag:typeof data.tag==='string'?data.tag:'sibuktamu',data:{url:notificationUrl(data.url)}
   });
   // A closed/stale client must never prevent the system notification.

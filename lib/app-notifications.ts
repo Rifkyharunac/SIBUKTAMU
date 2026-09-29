@@ -12,7 +12,9 @@ async function sendPush(endpoint:string,p256dh:string,auth:string,data:Record<st
  // Let the runtime calculate content length for the encrypted binary body.
  const headers=new Headers(payload.headers);headers.delete('content-length');
  for(let attempt=0;attempt<2;attempt++){
-  try{const response=await fetch(endpoint,{method:'POST',headers,body:payload.body,redirect:'error',signal:AbortSignal.timeout(10000)});
+  try{const response=await fetch(endpoint,{method:'POST',headers,body:payload.body,redirect:'manual',signal:AbortSignal.timeout(10000)});
+   // Never forward the encrypted payload or VAPID header to a redirect destination.
+   if(response.status>=300&&response.status<400)return response;
    if(attempt===0&&(response.status===408||response.status>=500)){await response.body?.cancel();continue;}
    return response;
   }catch(e){if(attempt===0)continue;const code=e instanceof Error&&(e.name==='TimeoutError'||e.name==='AbortError')?'PUSH_TIMEOUT':'PUSH_NETWORK';console.error('browser_push_failure',JSON.stringify({stage:'transport',code,name:e instanceof Error?e.name:'Error',detail:safeFailure(e),host:new URL(endpoint).hostname}));throw new PushDeliveryError(code,502,'transport');}

@@ -11,7 +11,7 @@ for(const visible of [false,true])test(`push displays system notification with $
  const w=worker({matchAll:async()=>visible?[{postMessage:()=>{}}]:[]});
  await w.fire('push',{data:{json:()=>({title:'Tamu baru datang',tag:'visit:ARRIVAL',body:'Ada tamu baru menunggu pelayanan.',url:'/admin/kunjungan/visit-1'})}});
  assert.equal(w.shown.length,1);assert.equal(w.shown[0][0],'Tamu baru datang');
- assert.equal(w.shown[0][1].silent,false);assert.equal(w.shown[0][1].renotify,true);
+ assert.equal(w.shown[0][1].requireInteraction,true);assert.equal(w.shown[0][1].silent,false);assert.equal(w.shown[0][1].renotify,true);
  assert.equal(w.shown[0][1].data.url,'/admin/kunjungan/visit-1');
  assert.equal(w.shown[0][1].body,'Ada tamu baru menunggu pelayanan.');
 });
