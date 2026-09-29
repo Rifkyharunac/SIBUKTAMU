@@ -94,7 +94,7 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  res=await route('admin/device').POST(request('admin/device',{subscription}));assert.equal(res.status,200,await res.clone().text());
  for(const endpoint of ['http://localhost/test','https://127.0.0.1/test','https://fcm.googleapis.com.attacker.test/a','https://fcm.googleapis.com:444/a'])assert.equal(validPushEndpoint(endpoint),false);
  const realTransport=global.fetch;const delivered=[];
- try{global.fetch=async(url,init)=>{delivered.push({url,init});return new Response(null,{status:201});};await dispatchAppNotifications(routedVisit.id,'ARRIVAL');assert.equal(delivered.length,1);assert.equal(delivered[0].init.headers['content-encoding'],'aes128gcm');assert.equal(delivered[0].init.redirect,'error');
+ try{global.fetch=async(url,init)=>{delivered.push({url,init});return new Response(null,{status:201});};await dispatchAppNotifications(routedVisit.id,'ARRIVAL');assert.equal(delivered.length,1);assert.equal(new Headers(delivered[0].init.headers).get('content-encoding'),'aes128gcm');assert.equal(delivered[0].init.redirect,'error');
  // Decode the real encrypted payload independently, as the receiving browser does.
  const {hkdfSync,createDecipheriv}=await import('node:crypto');
  const body=Buffer.from(delivered[0].init.body),salt=body.subarray(0,16),serverPublic=body.subarray(21,86);
@@ -110,6 +110,12 @@ const request=(pathname,body,headers={})=>new Request('https://example.test/api/
  const pushData=JSON.parse(plain.subarray(0,end).toString());
  assert.equal(pushData.url,'/admin/kunjungan/'+routedVisit.id);assert.match(pushData.body,/menunggu/);
  assert.ok(!JSON.stringify(pushData).includes('Routing Test'));
+ assert.equal(new Headers(delivered[0].init.headers).get('content-length'),null,'runtime calculates binary content length');
+ let transportAttempts=0;global.fetch=async()=>{transportAttempts++;if(transportAttempts===1)throw new TypeError('temporary outage');return new Response(null,{status:201});};
+ const tokenValue=cookie.split('=')[1];const tokenHash=await require(root+'/lib/password.ts').stableHash(tokenValue);
+ let pushTest=await require(root+'/lib/app-notifications.ts').testDevicePush(subscription.endpoint,selfId,tokenHash);assert.equal(pushTest.status,200);assert.equal(transportAttempts,2);
+ global.fetch=async()=>{throw new TypeError('network unavailable');};pushTest=await require(root+'/lib/app-notifications.ts').testDevicePush(subscription.endpoint,selfId,tokenHash);assert.equal(pushTest.status,502);assert.match(pushTest.error,/PUSH_NETWORK/);
+ global.fetch=async(url,init)=>{delivered.push({url,init});return new Response(null,{status:201});};
  const originalPrepare=env.DB.prepare;
  try {
   env.DB.prepare=q=>{if(q.startsWith('INSERT OR IGNORE INTO whatsapp_notification_logs'))throw Error('simulated log outage');return originalPrepare(q);};
